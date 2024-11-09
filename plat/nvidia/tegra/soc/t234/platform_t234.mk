@@ -31,7 +31,7 @@ $(eval $(call add_define,PLATFORM_MAX_CPUS_PER_CLUSTER))
 MAX_XLAT_TABLES				:= 25
 $(eval $(call add_define,MAX_XLAT_TABLES))
 
-MAX_MMAP_REGIONS			:= 30
+MAX_MMAP_REGIONS			:= 32
 $(eval $(call add_define,MAX_MMAP_REGIONS))
 
 WORKAROUND_CVE_2017_5715		:= 0
