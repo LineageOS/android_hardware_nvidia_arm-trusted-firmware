@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2020, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2017-2025, NVIDIA CORPORATION. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -13,8 +13,10 @@
 #define FLAG_DO_ACK			(U(1) << 0)
 #define FLAG_RING_DOORBELL		(U(1) << 1)
 
+#ifndef HSP_MASTER_CCPLEX_BIT
 /* Bit 1 is designated for CCPlex in secure world */
 #define HSP_MASTER_CCPLEX_BIT	(U(1) << 1)
+#endif
 /* Bit 19 is designated for BPMP in non-secure world */
 #define HSP_MASTER_BPMP_BIT		(U(1) << 19)
 /* Timeout to receive response from BPMP is 1 sec */
@@ -53,6 +55,8 @@ struct frame_data {
  */
 #define MRQ_RESET			U(20)
 #define MRQ_CLK				U(22)
+#define MRQ_SHUTDOWN			U(49)
+#define MRQ_GEARS			U(82)
 
 /**
  * Reset sub-commands
@@ -70,6 +74,21 @@ struct __attribute__((packed)) mrq_reset_request {
 	uint32_t cmd;
 	/* id of the reset to affected */
 	uint32_t reset_id;
+};
+
+struct __attribute__((packed)) cmd_clk_is_en_resp {
+ 	/**
+  	 * @brief The state of the clock that has been succesfully
+  	 * requested with CMD_CLK_ENABLE or CMD_CLK_DISABLE by the
+  	 * master invoking the command earlier.
+  	 *
+  	 * The state may not reflect the physical state of the clock
+  	 * if there are some other masters requesting it to be
+  	 * enabled.
+  	 *
+  	 * Value 0 is disabled, all other values indicate enabled.
+  	 */
+  	int32_t state;
 };
 
 /**
@@ -123,5 +142,14 @@ struct mrq_clk_request {
  * Macro to prepare the MRQ_CLK sub-command
  */
 #define make_mrq_clk_cmd(cmd, id)	(((cmd) << 24) | (id & 0xFFFFFF))
+
+struct mrq_shutdown_request {
+	/**
+	 * Legal values:
+	 *   0 - Power off
+	 *   1 - Reboot
+	 */
+	uint32_t state;
+};
 
 #endif /* BPMP_INTF_H */

@@ -16,30 +16,27 @@ TEGRA_COMMON		:=	plat/nvidia/tegra/common
 TEGRA_DRIVERS		:=	plat/nvidia/tegra/drivers
 TEGRA_LIBS		:=	plat/nvidia/tegra/lib
 
+ifneq ($(filter t186 t194 t210, $(TARGET_SOC)),)
+# Include GICv2 driver files
+include drivers/arm/gic/v2/gicv2.mk
+TEGRA_GICv2_SOURCES	:=	${GICV2_SOURCES}				\
+				plat/common/plat_gicv2.c			\
+				${TEGRA_COMMON}/tegra_gicv2.c
+else
+# Enable support for GIC600
+GICV3_SUPPORT_GIC600	:=	1
+GICV3_OVERRIDE_DISTIF_PWR_OPS	:=	1
+
 # Include GICv3 driver files
 include drivers/arm/gic/v3/gicv3.mk
 TEGRA_GICv3_SOURCES	:=	$(GICV3_SOURCES)				\
 				plat/common/plat_gicv3.c			\
 				${TEGRA_COMMON}/tegra_gicv3.c
-
-# Include GICv2 driver files
-include drivers/arm/gic/v2/gicv2.mk
-
-TEGRA_GICv2_SOURCES	:=	${GICV2_SOURCES}				\
-				plat/common/plat_gicv2.c			\
-				${TEGRA_COMMON}/tegra_gicv2.c
-
-TEGRA_GICv3_SOURCES	:=	drivers/arm/gic/common/gic_common.c		\
-				drivers/arm/gic/v3/arm_gicv3_common.c		\
-				drivers/arm/gic/v3/gicv3_main.c			\
-				drivers/arm/gic/v3/gicv3_helpers.c		\
-				plat/common/plat_gicv3.c			\
-				${TEGRA_COMMON}/tegra_gicv3.c
+endif
 
 BL31_SOURCES		+=	drivers/delay_timer/delay_timer.c		\
 				drivers/io/io_storage.c				\
 				plat/common/aarch64/crash_console_helpers.S	\
-				${TEGRA_LIBS}/debug/profiler.c			\
 				${TEGRA_COMMON}/aarch64/tegra_helpers.S		\
 				${TEGRA_LIBS}/debug/profiler.c			\
 				${TEGRA_COMMON}/tegra_bl31_setup.c		\
@@ -54,6 +51,14 @@ BL31_SOURCES		+=	drivers/delay_timer/delay_timer.c		\
 ifneq ($(ENABLE_STACK_PROTECTOR), 0)
 BL31_SOURCES		+=	${TEGRA_COMMON}/tegra_stack_protector.c
 endif
+
 ifeq (${EL3_EXCEPTION_HANDLING},1)
 BL31_SOURCES		+=	plat/common/aarch64/plat_ehf.c
+endif
+
+# Arm DEN0098 TRNG interface backend
+ifeq (${TRNG_SUPPORT},1)
+BL31_SOURCES		+=	services/std_svc/trng/trng_main.c		\
+				services/std_svc/trng/trng_entropy_pool.c 	\
+				${TEGRA_COMMON}/tegra_trng.c
 endif

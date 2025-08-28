@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2024, ARM Limited and Contributors. All rights reserved.
- * Copyright (c) 2020-2023, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2020-2024, NVIDIA Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -15,12 +15,14 @@
 
 #include <arch.h>
 #include <arch_helpers.h>
+#include <arch_features.h>
 #include <bl31/bl31.h>
 #include <common/bl_common.h>
 #include <common/debug.h>
 #include <cortex_a57.h>
 #include <denver.h>
 #include <drivers/console.h>
+#include <lib/gpt_rme/gpt_rme.h>
 #include <lib/mmio.h>
 #include <lib/utils.h>
 #include <lib/utils_def.h>
@@ -45,7 +47,10 @@ IMPORT_SYM(uint64_t, __RW_START__,	BL31_RW_START);
 extern uint64_t tegra_bl31_phys_base;
 
 static entry_point_info_t bl33_image_ep_info, bl32_image_ep_info;
-static plat_params_from_bl2_t plat_bl31_params_from_bl2 = {
+#if ENABLE_RME
+static entry_point_info_t rmm_image_ep_info;
+#endif
+static bl31_plat_params_t plat_bl31_params = {
 	.tzdram_size = TZDRAM_SIZE
 };
 #ifdef SPD_trusty
@@ -66,23 +71,74 @@ entry_point_info_t *bl31_plat_get_next_image_ep_info(uint32_t type)
 {
 	entry_point_info_t *ep =  NULL;
 
-	/* return BL32 entry point info if it is valid */
-	if (type == NON_SECURE) {
+	switch (type) {
+	case NON_SECURE:
 		ep = &bl33_image_ep_info;
-	} else if ((type == SECURE) && (bl32_image_ep_info.pc != 0U)) {
-		ep = &bl32_image_ep_info;
+		break;
+
+	case SECURE:
+		if (bl32_image_ep_info.pc != 0U) {
+			ep = &bl32_image_ep_info;
+		}
+		break;
+#if ENABLE_RME
+	case REALM:
+		if (is_feat_rme_present()) {
+			ep = &rmm_image_ep_info;
+		}
+		break;
+#endif
+	default:
+		break;
 	}
 
 	return ep;
 }
 
 /*******************************************************************************
- * Return a pointer to the 'plat_params_from_bl2_t' structure. The BL2 image
+ * Return a pointer to the 'bl31_plat_params_t' structure. The BL2 image
  * passes this platform specific information.
  ******************************************************************************/
-plat_params_from_bl2_t *bl31_get_plat_params(void)
+bl31_plat_params_t *bl31_get_plat_params(void)
 {
-	return &plat_bl31_params_from_bl2;
+	return &plat_bl31_params;
+}
+
+/*******************************************************************************
+ * Parse the boot parameters struct and update the internal database
+ ******************************************************************************/
+#pragma weak plat_parse_bl31_plat_params
+int32_t plat_parse_bl31_plat_params(bl31_plat_params_t *bl31_plat_params,
+					void *params_from_bl)
+{
+	bl31_plat_params_t *plat_params = (bl31_plat_params_t *)params_from_bl;
+
+	/*
+	 * Parse platform specific parameters
+	 */
+	assert(plat_params != NULL);
+	assert(bl31_plat_params != NULL);
+	bl31_plat_params->tzdram_base = plat_params->tzdram_base;
+	bl31_plat_params->tzdram_size = plat_params->tzdram_size;
+	bl31_plat_params->uart_id = plat_params->uart_id;
+	bl31_plat_params->log_level = LOG_LEVEL;
+	bl31_plat_params->l2_ecc_parity_prot_dis = plat_params->l2_ecc_parity_prot_dis;
+	bl31_plat_params->sc7entry_fw_size = plat_params->sc7entry_fw_size;
+	bl31_plat_params->sc7entry_fw_base = plat_params->sc7entry_fw_base;
+	bl31_plat_params->boot_profiler_shmem_base =
+			plat_params->boot_profiler_shmem_base;
+	bl31_plat_params->th500_ras_fw_comm_base = plat_params->th500_ras_fw_comm_base;
+	bl31_plat_params->th500_ras_fw_comm_size = plat_params->th500_ras_fw_comm_size;
+	return 0;
+}
+
+/*******************************************************************************
+ * Parse the BL31 manifest dts and update the internal database
+ ******************************************************************************/
+#pragma weak plat_bl31_manifest_parse
+int plat_bl31_manifest_parse(const void *fdt, bl31_plat_params_t *params)
+{
+	return -ENOTSUP;
 }
 
 /*******************************************************************************
@@ -93,7 +149,8 @@ void bl31_early_platform_setup2(u_register_t arg0, u_register_t arg1,
 				u_register_t arg2, u_register_t arg3)
 {
 	struct tegra_bl31_params *arg_from_bl2 = plat_get_bl31_params();
-	plat_params_from_bl2_t *plat_params = plat_get_bl31_plat_params();
+	bl31_plat_params_t *plat_params = plat_get_bl31_plat_params();
+
 	int32_t ret;
 
 	/*
@@ -102,6 +159,28 @@ void bl31_early_platform_setup2(u_register_t arg0, u_register_t arg1,
 	 */
 	(void)arg0;
 	(void)arg1;
+
+	/* Check for manifest first; fall back to legacy boot params */
+	if (plat_bl31_manifest_parse((const void *)plat_params,
+				     &plat_bl31_params) != 0U) {
+		plat_parse_bl31_plat_params(&plat_bl31_params, (void *)plat_params);
+	}
+
+	/*
+	 * Enable console for the platform
+	 */
+	plat_enable_console(plat_bl31_params.uart_id);
+
+	/*
+	 * Configure the max log level. Logging will be turned off if
+	 * value is invalid.
+	 */
+	if (plat_bl31_params.log_level == U(0xBAADBAAD)) {
+		WARN("logging-level string mismatch, disable logging.\n");
+		tf_log_set_max_level(0);
+	} else {
+		tf_log_set_max_level(plat_bl31_params.log_level);
+	}
 
 	/*
 	 * Copy BL3-3, BL3-2 entry point information.
@@ -119,46 +198,23 @@ void bl31_early_platform_setup2(u_register_t arg0, u_register_t arg1,
 #endif
 	}
 
-	/*
-	 * Parse platform specific parameters
-	 */
-	assert(plat_params != NULL);
-	plat_bl31_params_from_bl2.tzdram_base = plat_params->tzdram_base;
-	plat_bl31_params_from_bl2.tzdram_size = plat_params->tzdram_size;
-	plat_bl31_params_from_bl2.uart_id = plat_params->uart_id;
-	plat_bl31_params_from_bl2.l2_ecc_parity_prot_dis = plat_params->l2_ecc_parity_prot_dis;
-	plat_bl31_params_from_bl2.sc7entry_fw_size = plat_params->sc7entry_fw_size;
-	plat_bl31_params_from_bl2.sc7entry_fw_base = plat_params->sc7entry_fw_base;
-
-	/*
-	 * It is very important that we run either from TZDRAM or TZSRAM base.
-	 * Add an explicit check here.
-	 */
-	if ((plat_bl31_params_from_bl2.tzdram_base != (uint64_t)BL31_BASE) &&
-	    (TEGRA_TZRAM_BASE != BL31_BASE)) {
-		panic();
+#if ENABLE_RME
+	if (arg_from_bl2->rmm_ep_info != NULL) {
+		rmm_image_ep_info = *arg_from_bl2->rmm_ep_info;
 	}
-
-	/*
-	 * Enable console for the platform
-	 */
-	plat_enable_console(plat_params->uart_id);
+#endif
 
 	/*
 	 * The previous bootloader passes the base address of the shared memory
 	 * location to store the boot profiler logs. Sanity check the
 	 * address and initialise the profiler library, if it looks ok.
 	 */
-	ret = bl31_check_ns_address(plat_params->boot_profiler_shmem_base,
+	ret = bl31_check_ns_address(plat_bl31_params.boot_profiler_shmem_base,
 			PROFILER_SIZE_BYTES);
 	if (ret == (int32_t)0) {
 
-		/* store the membase for the profiler lib */
-		plat_bl31_params_from_bl2.boot_profiler_shmem_base =
-			plat_params->boot_profiler_shmem_base;
-
 		/* initialise the profiler library */
-		boot_profiler_init(plat_params->boot_profiler_shmem_base,
+		boot_profiler_init(plat_bl31_params.boot_profiler_shmem_base,
 				   TEGRA_TMRUS_BASE);
 	}
 
@@ -223,11 +279,12 @@ void bl31_platform_setup(void)
 	 */
 	plat_secondary_setup();
 
+#if ENABLE_TEGRA_MEMCTRL
 	/*
 	 * Initial Memory Controller configuration.
 	 */
 	tegra_memctrl_setup();
-
+#endif
 	/*
 	 * Late setup handler to allow platforms to performs additional
 	 * functionality.
@@ -273,7 +330,7 @@ void bl31_plat_arch_setup(void)
 	uint64_t code_base = BL_CODE_BASE;
 	uint64_t code_size = BL_CODE_END - BL_CODE_BASE;
 	const mmap_region_t *plat_mmio_map = NULL;
-	const plat_params_from_bl2_t *params_from_bl2 = bl31_get_plat_params();
+	unsigned int attr = MT_SECURE;
 
 	/*
 	 * Add timestamp for arch setup entry.
@@ -288,30 +345,42 @@ void bl31_plat_arch_setup(void)
 		WARN("MMIO map not available\n");
 	}
 
+#if ENABLE_RME
+	/* MT_ROOT for platforms that support RME */
+	if (is_feat_rme_present()) {
+		attr = MT_ROOT;
+	}
+#endif
+
 	/* add memory regions */
 	mmap_add_region(rw_start, rw_start,
 			rw_size,
-			MT_MEMORY | MT_RW | MT_SECURE);
+			MT_MEMORY | MT_RW | attr);
 	mmap_add_region(rodata_start, rodata_start,
 			rodata_size,
-			MT_RO_DATA | MT_SECURE);
+			MT_RO_DATA | attr);
 	mmap_add_region(code_base, code_base,
 			code_size,
-			MT_CODE | MT_SECURE);
-
-	/* map TZDRAM used by BL31 as coherent memory */
-	if (TEGRA_TZRAM_BASE == tegra_bl31_phys_base) {
-		mmap_add_region(params_from_bl2->tzdram_base,
-				params_from_bl2->tzdram_base,
-				BL31_SIZE,
-				MT_DEVICE | MT_RW | MT_SECURE);
-	}
+			MT_CODE | attr);
 
 	/* set up translation tables */
 	init_xlat_tables();
 
 	/* enable the MMU */
 	enable_mmu_el3(0);
+
+#if ENABLE_RME
+	/*
+	 * Initialise Granule Protection library and enable GPC for the primary
+	 * processor. The tables have already been initialized by a previous BL
+	 * stage, so there is no need to provide any PAS here. This function
+	 * sets up pointers to those tables.
+	 */
+	if ((is_feat_rme_present()) && (gpt_runtime_init() < 0)) {
+		ERROR("gpt_runtime_init() failed!\n");
+		panic();
+	}
+#endif /* ENABLE_RME */
 
 	/*
 	 * Add timestamp for arch setup exit.

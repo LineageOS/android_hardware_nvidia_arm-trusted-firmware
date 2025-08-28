@@ -6,6 +6,7 @@
 
 #include <stdbool.h>
 
+#include <arch_helpers.h>
 #include <common/debug.h>
 #include <lib/mpmm/mpmm.h>
 

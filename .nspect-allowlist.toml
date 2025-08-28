@@ -1,0 +1,9 @@
+version = "1.0.0"
+[oss]
+
+[oss.excluded]
+
+[[oss.excluded.directories]]
+paths = ['tools/amlogic/', 'tools/cert_create/', 'tools/conventional-changelog-tf-a/', 'tools/encrypt_fw/', 'tools/marvell/', 'tools/memory/', 'tools/nxp/', 'tools/renesas/', 'tools/sptool/', 'tools/stm32image/', 'services/spd/pncd/', 'services/spd/tlkd/', 'services/spd/trusty/', 'services/spd/tspd/', 'plat/allwinner/', 'plat/amlogic/', 'plat/arm/', 'plat/aspeed/', 'plat/brcm/', 'plat/hisilicon/', 'plat/imx/', 'plat/intel/', 'plat/marvell/', 'plat/mediatek/', 'plat/nuvoton/', 'plat/nxp/', 'plat/qemu/', 'plat/qti/', 'plat/renesas/', 'plat/rockchip/', 'plat/rpi/', 'plat/socionext/', 'plat/st/', 'plat/ti/', 'plat/xilinx/']
+comment = 'unused packages'
+

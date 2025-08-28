@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020, ARM Limited and Contributors. All rights reserved.
- * Copyright (c) 2019-2020, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019-2022, NVIDIA CORPORATION. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -455,7 +455,7 @@ int32_t tegra_se_suspend(void)
 	int32_t ret = 0;
 
 	/* initialise communication channel with BPMP */
-	assert(tegra_bpmp_ipc_init() == 0);
+	assert(tegra_bpmp_ipc_init(1U) == 0);
 
 	/* Enable SE clock before SE context save */
 	ret = tegra_bpmp_ipc_enable_clock(TEGRA194_CLK_SE);
@@ -488,7 +488,7 @@ void tegra_se_resume(void)
 	int32_t ret = 0;
 
 	/* initialise communication channel with BPMP */
-	assert(tegra_bpmp_ipc_init() == 0);
+	assert(tegra_bpmp_ipc_init(1U) == 0);
 
 	/* Enable SE clock before SE context restore */
 	ret = tegra_bpmp_ipc_enable_clock(TEGRA194_CLK_SE);

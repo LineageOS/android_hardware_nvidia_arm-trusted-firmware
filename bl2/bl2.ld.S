@@ -16,8 +16,6 @@ MEMORY {
 }
 
 SECTIONS {
-    RAM_REGION_START = ORIGIN(RAM);
-    RAM_REGION_LENGTH = LENGTH(RAM);
     . = BL2_BASE;
 
     ASSERT(. == ALIGN(PAGE_SIZE),
@@ -126,7 +124,6 @@ SECTIONS {
 
     __RW_END__ = .;
     __BL2_END__ = .;
-    RAM_REGION_END = .;
 
     __BSS_SIZE__ = SIZEOF(.bss);
 

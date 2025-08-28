@@ -191,6 +191,9 @@ func bl31_warm_entrypoint
 	 * accesses are controlled attributes in GPCCR and do not depend on the
 	 * SCR_EL3.C bit.
 	 */
+	mrs	x0, id_aa64pfr0_el1
+	ubfx	x0, x0, #ID_AA64PFR0_FEAT_RME_SHIFT, #ID_AA64PFR0_FEAT_RME_LENGTH
+	cbz	x0, 1f
 	bl	gpt_enable
 	cbz	x0, 1f
 	no_ret plat_panic_handler

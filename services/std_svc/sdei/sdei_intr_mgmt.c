@@ -208,13 +208,17 @@ static void restore_event_ctx(const sdei_dispatch_context_t *disp_ctx, void *tgt
 
 static void save_secure_context(void)
 {
+#if !SPMD_SPM_AT_SEL2
 	cm_el1_sysregs_context_save(SECURE);
+#endif
 }
 
 /* Restore Secure context and arrange to resume it at the next ERET */
 static void restore_and_resume_secure_context(void)
 {
+#if !SPMD_SPM_AT_SEL2
 	cm_el1_sysregs_context_restore(SECURE);
+#endif
 	cm_set_next_eret_context(SECURE);
 }
 
@@ -225,8 +229,9 @@ static void restore_and_resume_secure_context(void)
 static cpu_context_t *restore_and_resume_ns_context(void)
 {
 	cpu_context_t *ns_ctx;
-
+#if !SPMD_SPM_AT_SEL2
 	cm_el1_sysregs_context_restore(NON_SECURE);
+#endif
 	cm_set_next_eret_context(NON_SECURE);
 
 	ns_ctx = cm_get_context(NON_SECURE);

@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2013-2024, Arm Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2024, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2022, NVIDIA Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -15,6 +16,7 @@
 #include <context.h>
 #include <drivers/delay_timer.h>
 #include <lib/el3_runtime/context_mgmt.h>
+#include <lib/el3_runtime/pubsub_events.h>
 #include <lib/extensions/spe.h>
 #include <lib/utils.h>
 #include <plat/common/platform.h>
@@ -230,6 +232,29 @@ bool psci_is_last_on_cpu(void)
 	}
 
 	return true;
+}
+
+/*******************************************************************************
+ * This function calculates the number of ON CPUs within a given range. The PSCI
+ * states are not locked in this function by design. Callers must ensure
+ * proper locking, if necessary.
+ ******************************************************************************/
+uint32_t psci_get_number_of_on_cpus(uint32_t start_idx, uint32_t end_idx)
+{
+	uint32_t cpu_idx;
+	uint32_t number_of_on_cpus = 0U;
+
+	assert(start_idx < end_idx);
+	assert(end_idx < psci_plat_core_count);
+
+	for (cpu_idx = start_idx; cpu_idx <= end_idx; cpu_idx++) {
+
+		if (psci_get_aff_info_state_by_idx(cpu_idx) != AFF_STATE_OFF) {
+			number_of_on_cpus++;
+		}
+	}
+
+	return number_of_on_cpus;
 }
 
 /*******************************************************************************
@@ -820,6 +845,9 @@ void psci_release_pwr_domain_locks(unsigned int end_pwrlvl,
 		parent_idx = parent_nodes[level - 1U];
 		psci_lock_release(&psci_non_cpu_pd_nodes[parent_idx]);
 	}
+
+	flush_dcache_range((uint64_t)psci_non_cpu_pd_nodes,
+		 sizeof(non_cpu_pd_node_t) * PLATFORM_CORE_COUNT);
 }
 
 /*******************************************************************************
@@ -1055,6 +1083,8 @@ void psci_warmboot_entrypoint(void)
 	 * in the reverse order to which they were acquired.
 	 */
 	psci_release_pwr_domain_locks(end_pwrlvl, parent_nodes);
+
+	PUBLISH_EVENT(psci_cpu_warmboot_finish);
 }
 
 /*******************************************************************************

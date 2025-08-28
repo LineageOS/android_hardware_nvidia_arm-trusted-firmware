@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Arm Limited and Contributors. All rights reserved.
+ * Copyright (c) 2017-2024, Arm Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -46,18 +46,18 @@ typedef struct {
 } profiler_rec_t;
 
 static profiler_rec_t *head, *cur, *tail;
-static uint32_t tmr;
+static uint64_t tmr;
 static bool is_shmem_buf_mapped;
 
 /*******************************************************************************
  * Initialise the profiling library
  ******************************************************************************/
-void boot_profiler_init(uint64_t shmem_base, uint32_t tmr_base)
+void boot_profiler_init(uint64_t shmem_base, uint64_t tmr_base)
 {
 	uint64_t shmem_end_base;
 
 	assert(shmem_base != ULL(0));
-	assert(tmr_base != U(0));
+	assert(tmr_base != ULL(0));
 
 	/* store the buffer address */
 	shmem_base_addr = shmem_base;

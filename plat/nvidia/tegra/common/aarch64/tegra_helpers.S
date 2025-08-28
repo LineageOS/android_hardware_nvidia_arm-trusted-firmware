@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2019, ARM Limited and Contributors. All rights reserved.
- * Copyright (c) 2020, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2020-2021, NVIDIA Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -10,12 +10,14 @@
 #include <assert_macros.S>
 #include <cortex_a57.h>
 #include <cpu_macros.S>
+#include <olympus.h>
 
 #include <platform_def.h>
 #include <tegra_def.h>
 #include <tegra_platform.h>
 
 #define MIDR_PN_CORTEX_A57		0xD07
+
 
 /*******************************************************************************
  * Implementation defined ACTLR_EL3 bit definitions
@@ -49,6 +51,7 @@
 	.globl	ns_image_entrypoint
 	.globl	tegra_bl31_phys_base
 	.globl	tegra_console_base
+	.globl	tegra_primary_cpu_mpid
 
 	/* ---------------------
 	 * Common CPU init code
@@ -122,6 +125,23 @@
 	mrs	x0, cntkctl_el1
 	orr	x0, x0, #EL0VCTEN_BIT
 	msr	cntkctl_el1, x0
+.endm
+
+	/* -----------------------------------------------------
+	 * On SMT platforms prevent secondary thread power on until
+	 * all CPU special purpose registers are programmed.
+	 * -----------------------------------------------------
+	 */
+
+.macro plat_block_secondary_pe
+	mrs	x0, midr_el1
+	mov_imm	x1, OLYMPUS_MIDR
+	cmp	x0, x1
+	b.ne	1f
+	/* block secondary PE until all SPR programming is complete */
+	sysreg_bit_set OLYMPUS_NV_CPUACTLR28_EL1, \
+		OLYMPUS_NV_CPUACTLR28_EL1_BLOCK_SECONDARY_PE_BIT
+1:
 .endm
 
 	/* -----------------------------------------------------
@@ -202,12 +222,15 @@ endfunc platform_mem_init
 	 */
 func plat_reset_handler
 
+	plat_block_secondary_pe
+
+#if !ENABLE_PIE
 	/* ----------------------------------------------------
 	 * Verify if we are running from BL31_BASE address
 	 * ----------------------------------------------------
 	 */
 	adr	x18, bl31_entrypoint
-	mov	x17, #BL31_BASE
+	mov_imm	x17, BL31_BASE
 	cmp	x18, x17
 	b.eq	1f
 
@@ -218,8 +241,9 @@ func plat_reset_handler
 	 */
 	mov	x0, x17
 	mov	x1, x18
-	adr	x2, __RELA_END__
+	adr	x2, __STACKS_END__
 	sub	x2, x2, x18
+
 _loop16:
 	cmp	x2, #16
 	b.lo	_loop1
@@ -243,6 +267,19 @@ _end:	mov	x0, x20
 	mov	x1, x21
 	br	x17
 1:
+#endif
+
+	/* ----------------------------------------------------
+	 * Save the primary CPU MPID value for future use
+	 * ----------------------------------------------------
+	 */
+	adr	x17, tegra_primary_cpu_mpid
+	ldr	x18, [x17]
+	cbnz	x18, skip_mpid_save
+	mrs	x18, mpidr_el1
+	str	x18, [x17]
+
+skip_mpid_save:
 
 	/* -----------------------------------
 	 * derive and save the phys_base addr
@@ -267,6 +304,10 @@ _end:	mov	x0, x20
 	ret
 endfunc plat_reset_handler
 
+/* Helper macro for CoreId calculation */
+#define PLATFORM_MAX_CPUS_PER_SOCKET	(PLATFORM_CLUSTER_COUNT * \
+					 PLATFORM_MAX_CPUS_PER_CLUSTER)
+
 	/* ------------------------------------------------------
 	 * int32_t plat_core_pos_by_mpidr(u_register_t mpidr)
 	 *
@@ -276,15 +317,18 @@ endfunc plat_reset_handler
 	 * to convert an MPIDR to a unique linear index. An error
 	 * code (-1) is returned in case the MPIDR is invalid.
 	 *
-	 * Clobbers: x0-x3
+	 * Clobbers: x0-x4
 	 * ------------------------------------------------------
 	 */
 func plat_core_pos_by_mpidr
-	lsr	x1, x0, #MPIDR_AFF0_SHIFT
+	lsr	x1, x0, #TEGRA_CORE_AFFINITY
 	and	x1, x1, #MPIDR_AFFLVL_MASK /* core id */
-	lsr	x2, x0, #MPIDR_AFF1_SHIFT
+	lsr	x2, x0, #TEGRA_CLUSTER_AFFINITY
 	and	x2, x2, #MPIDR_AFFLVL_MASK /* cluster id */
-
+#ifdef PLATFORM_SOCKET_COUNT
+	lsr	x3, x0, #TEGRA_SOCKET_AFFINITY
+	and	x3, x3, #MPIDR_AFFLVL_MASK /* socket id */
+#endif
 	/* core_id >= PLATFORM_MAX_CPUS_PER_CLUSTER */
 	mov	x0, #-1
 	cmp	x1, #(PLATFORM_MAX_CPUS_PER_CLUSTER - 1)
@@ -294,10 +338,23 @@ func plat_core_pos_by_mpidr
 	cmp	x2, #(PLATFORM_CLUSTER_COUNT - 1)
 	b.gt	1f
 
+#ifdef PLATFORM_SOCKET_COUNT
+	/* socket_id >= PLATFORM_SOCKET_COUNT */
+	cmp	x3, #(PLATFORM_SOCKET_COUNT - 1)
+	b.gt	1f
+#endif
+
 	/* CorePos = CoreId + (ClusterId * cpus per cluster) */
-	mov	x3, #PLATFORM_MAX_CPUS_PER_CLUSTER
-	mul	x3, x3, x2
-	add	x0, x1, x3
+	mov	x4, #PLATFORM_MAX_CPUS_PER_CLUSTER
+	mul	x4, x4, x2
+	add	x0, x1, x4
+
+#ifdef PLATFORM_SOCKET_COUNT
+	/* CorePos = CoreId + (SocketId * cpus per socket) */
+	mov	x1, #PLATFORM_MAX_CPUS_PER_SOCKET
+	mul	x3, x3, x1
+	add	x0, x0, x3
+#endif
 
 1:
 	ret

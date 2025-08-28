@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include <arch_helpers.h>
 #include <common/debug.h>
 #include <common/runtime_svc.h>
 #include <lib/cpus/errata.h>
@@ -11,9 +12,19 @@
 #include <lib/cpus/wa_cve_2018_3639.h>
 #include <lib/cpus/wa_cve_2022_23960.h>
 #include <lib/smccc.h>
+#include <plat/common/platform.h>
 #include <services/arm_arch_svc.h>
 #include <smccc_helpers.h>
-#include <plat/common/platform.h>
+#include <tools_share/uuid.h>
+
+/* Arm Arch Service UUID */
+static uuid_t arm_arch_svc_uid = {
+	{0xb7, 0xe0, 0xe2, 0x4d},
+	{0xf0, 0x3d},
+	{0x42, 0x8d},
+	0x9c, 0x1d,
+	{0x87, 0xf6, 0x93, 0x84, 0x76, 0xd9}
+};
 
 static int32_t smccc_version(void)
 {
@@ -161,6 +172,17 @@ static uintptr_t arm_arch_svc_smc_handler(uint32_t smc_fid,
 		SMC_RET0(handle);
 #endif
 #endif /* __aarch64__ */
+
+	case ARM_ARCH_SVC_CALL_COUNT:
+		/* Return the number of Arm Arch Calls. */
+		SMC_RET1(handle, ARM_ARCH_SVC_COUNT);
+	case ARM_ARCH_SVC_UID:
+		/* Return UID to the caller */
+		SMC_UUID_RET(handle, arm_arch_svc_uid);
+	case ARM_ARCH_SVC_VERSION:
+		/* Return the version of current implementation */
+		SMC_RET2(handle, ARM_ARCH_SVC_VERSION_MAJOR, ARM_ARCH_SVC_VERSION_MINOR);
+
 	default:
 		WARN("Unimplemented Arm Architecture Service Call: 0x%x \n",
 			smc_fid);

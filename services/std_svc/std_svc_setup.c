@@ -60,7 +60,7 @@ static int32_t std_svc_setup(void)
 
 #if defined(SPD_spmd)
 	if (spmd_setup() != 0) {
-		ret = 1;
+		WARN("SPMD setup failed. Continuing boot.\n");
 	}
 #endif
 
@@ -79,6 +79,12 @@ static int32_t std_svc_setup(void)
 	/* TRNG initialisation */
 	trng_setup();
 #endif /* TRNG_SUPPORT */
+
+#if DRTM_SUPPORT
+	if (drtm_setup() != 0) {
+		ret = 1;
+	}
+#endif /* DRTM_SUPPORT */
 
 #if DRTM_SUPPORT
 	if (drtm_setup() != 0) {

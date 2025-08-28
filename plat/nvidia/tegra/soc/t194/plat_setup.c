@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019-2023, NVIDIA CORPORATION. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -7,6 +7,7 @@
 #include <arch_helpers.h>
 #include <assert.h>
 #include <bl31/bl31.h>
+#include <bpmp_ipc.h>
 #include <common/bl_common.h>
 #include <common/interrupt_props.h>
 #include <drivers/console.h>
@@ -239,7 +240,7 @@ static inline bool tegra194_is_scr_valid(void)
  ******************************************************************************/
 void plat_early_platform_setup(void)
 {
-	const plat_params_from_bl2_t *params_from_bl2 = bl31_get_plat_params();
+	const bl31_plat_params_t *params_from_bl2 = bl31_get_plat_params();
 	uint8_t enable_ccplex_lock_step = params_from_bl2->enable_ccplex_lock_step;
 	uint64_t actlr_elx;
 
@@ -340,6 +341,28 @@ void plat_early_platform_setup(void)
 		/* check if the bit is actually set */
 		assert((read_actlr_el1() & DENVER_CPU_ENABLE_DUAL_EXEC_EL1) != 0ULL);
 	}
+
+#if TRAP_LOWER_EL_ERR_ACCESS
+	/*
+	 * SCR_EL3.TERR: Error register(ER*_EL1) accesses from EL1 or EL2
+	 * generate a Trap exception to EL3.
+	 */
+	scr_el3 = (uint32_t)read_scr();
+	scr_el3 |= SCR_TERR_BIT;
+	write_scr(scr_el3);
+#endif
+
+#if ENABLE_TEGRA_PERFMON
+	/*
+	 * Enable Uncore Perfmon counters to aid in debugging.
+	 *
+	 * When set, events are allowed to be counted in the NVIDIA-specific
+	 * Performance Monitors extension.
+	 */
+	actlr_elx = read_actlr_el3();
+	actlr_elx |= DENVER_CPU_ENABLE_SPME;
+	write_actlr_el3(actlr_elx);
+#endif
 }
 
 /* Secure IRQs for Tegra194 */
@@ -382,7 +405,7 @@ struct tegra_bl31_params *plat_get_bl31_params(void)
 /*******************************************************************************
  * Return pointer to the BL31 platform params from previous bootloader
  ******************************************************************************/
-plat_params_from_bl2_t *plat_get_bl31_plat_params(void)
+bl31_plat_params_t *plat_get_bl31_plat_params(void)
 {
 	uint64_t val;
 
@@ -391,7 +414,7 @@ plat_params_from_bl2_t *plat_get_bl31_plat_params(void)
 	val <<= 32;
 	val |= mmio_read_32(TEGRA_SCRATCH_BASE + SCRATCH_BL31_PLAT_PARAMS_LO_ADDR);
 
-	return (plat_params_from_bl2_t *)(uintptr_t)val;
+	return (bl31_plat_params_t *)(uintptr_t)val;
 }
 
 /*******************************************************************************
@@ -399,6 +422,9 @@ plat_params_from_bl2_t *plat_get_bl31_plat_params(void)
  ******************************************************************************/
 void plat_late_platform_setup(void)
 {
+	/* Initialize SMMU registers */
+	tegra_smmu_init();
+
 #if ENABLE_STRICT_CHECKING_MODE
 	/*
 	 * Enable strict checking after programming the GSC for
@@ -446,4 +472,35 @@ void plat_runtime_setup(void)
 	 * Verify the integrity of the previously configured SMMU(s) settings
 	 */
 	tegra_smmu_verify();
+}
+
+/*******************************************************************************
+ * Return pointer to the bpmp_ipc_data
+ ******************************************************************************/
+static struct bpmp_ipc_platform_data bpmp_ipc;
+struct bpmp_ipc_platform_data *plat_get_bpmp_ipc_data(void)
+{
+	bpmp_ipc.bpmp_ipc_tx_base = TEGRA_BPMP_IPC_TX_PHYS_BASE;
+	bpmp_ipc.bpmp_ipc_rx_base = TEGRA_BPMP_IPC_RX_PHYS_BASE;
+	bpmp_ipc.bpmp_ipc_map_size = TEGRA_BPMP_IPC_CH_MAP_SIZE;
+
+	return &bpmp_ipc;
+}
+
+/*******************************************************************************
+ * Platform handler called to check the validity of the non secure entrypoint.
+ ******************************************************************************/
+int32_t tegra_soc_validate_ns_entrypoint(uintptr_t entrypoint)
+{
+	int32_t ret = PSCI_E_INVALID_ADDRESS;
+
+	/*
+	 * Check if the non secure entrypoint lies within the non
+	 * secure DRAM.
+	 */
+	if ((entrypoint >= TEGRA_DRAM_BASE) && (entrypoint <= TEGRA_DRAM_END)) {
+		ret = PSCI_E_SUCCESS;
+	}
+
+	return ret;
 }

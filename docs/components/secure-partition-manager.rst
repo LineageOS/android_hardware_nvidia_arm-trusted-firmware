@@ -136,7 +136,6 @@ Sample TF-A build command line when the SPMC is located at S-EL1
 
 Sample TF-A build command line when FEAT_SEL2 architecture extension is
 implemented and the SPMC is located at S-EL2:
-
 .. code:: shell
 
     make \
@@ -154,7 +153,6 @@ implemented and the SPMC is located at S-EL2:
 
 Sample TF-A build command line when FEAT_SEL2 architecture extension is
 implemented, the SPMC is located at S-EL2, and enabling secure boot:
-
 .. code:: shell
 
     make \

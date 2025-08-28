@@ -1,5 +1,6 @@
 #
 # Copyright (c) 2018-2024, Arm Limited. All rights reserved.
+# Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
 #
@@ -26,9 +27,22 @@ INCLUDE_PATHS := -I../../include/tools_share
 
 .PHONY: all clean distclean
 
-all: ${PROJECT}
+all: ${SPTOOL}
 
-${PROJECT}: ${OBJECTS} Makefile
+HOST_OBJS :=
+
+define MAKE_HOST_OBJS
+$(eval HOST_OBJ := $(1)/$(patsubst %.c,%.o,$(notdir $(2))))
+
+$(HOST_OBJ): $(2)
+	@echo " HOSTCC $$<"
+	$${Q}$${HOSTCC} -c $${CPPFLAGS} ${HOSTCCFLAGS} $${INCLUDE_PATHS} $$< -o $$@
+HOST_OBJS += $(HOST_OBJ)
+endef
+
+$(eval $(call MAKE_HOST_OBJS, $(BUILD_DIR), $(SOURCES)))
+
+${SPTOOL}: ${HOST_OBJS} Makefile
 	$(s)echo "  HOSTLD  $@"
 	$(q)$(host-cc) ${OBJECTS} -o $@ ${LDLIBS}
 	$(s)echo
@@ -40,4 +54,4 @@ ${PROJECT}: ${OBJECTS} Makefile
 	$(q)$(host-cc) -c ${CPPFLAGS} ${HOSTCCFLAGS} ${INCLUDE_PATHS} $< -o $@
 
 clean:
-	$(call SHELL_DELETE_ALL, ${PROJECT} ${OBJECTS})
+	$(call SHELL_DELETE_ALL, ${HOST_OBJS} ${SPTOOL})

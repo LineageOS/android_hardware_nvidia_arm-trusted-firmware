@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019-2023, NVIDIA CORPORATION. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -29,11 +29,19 @@ extern uint64_t tegra_bl31_phys_base;
 void plat_secondary_setup(void)
 {
 	uint32_t addr_low, addr_high;
-	plat_params_from_bl2_t *params_from_bl2 = bl31_get_plat_params();
+	bl31_plat_params_t *params_from_bl2 = bl31_get_plat_params();
 	uint64_t cpu_reset_handler_base, cpu_reset_handler_size, tzdram_addr;
 	uint64_t src_len_bytes = BL_END - tegra_bl31_phys_base;
+	int ret;
 
 	INFO("Setting up secondary CPU boot\n");
+
+	/* map TZDRAM used by BL31 as coherent memory */
+	ret = mmap_add_dynamic_region(params_from_bl2->tzdram_base,
+			params_from_bl2->tzdram_base,
+			BL31_SIZE,
+			MT_DEVICE | MT_RW | MT_SECURE);
+	assert(ret == 0);
 
 	tzdram_addr = params_from_bl2->tzdram_base +
 		      tegra194_get_cpu_reset_handler_size();

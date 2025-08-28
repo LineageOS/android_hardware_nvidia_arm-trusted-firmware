@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2021, ARM Limited and Contributors. All rights reserved.
- * Copyright (c) 2023, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2021-2023, NVIDIA Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -252,6 +252,10 @@ void gicv3_rdistif_base_addrs_probe(uintptr_t *rdistif_base_addrs,
 void gicv3_rdistif_mark_core_awake(uintptr_t gicr_base);
 void gicv3_rdistif_mark_core_asleep(uintptr_t gicr_base);
 
+#if GIC600AE_ERRATA_WA_1568841 || GIC600AE_ERRATA_WA_2079287
+void gicv3_apply_errata_wa_1568841_2079287(uintptr_t gicd_base);
+#endif
+
 /*******************************************************************************
  * GIC Distributor interface accessors
  ******************************************************************************/
@@ -304,6 +308,16 @@ static inline void gicd_set_ctlr(uintptr_t base,
 	if (rwp != 0U) {
 		gicd_wait_for_pending_write(base);
 	}
+}
+
+static inline uint32_t gicd_read_sac(uintptr_t base)
+{
+	return mmio_read_32(base + GICD_SAC);
+}
+
+static inline void gicd_write_sac(uintptr_t base, uint32_t val)
+{
+	mmio_write_32(base + GICD_SAC, val);
 }
 
 /*******************************************************************************

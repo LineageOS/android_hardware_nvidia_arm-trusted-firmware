@@ -44,6 +44,12 @@
 #define DENVER_CPU_ENABLE_DUAL_EXEC_EL3 (ULL(1) << 9)
 #define DENVER_CPU_ENABLE_DUAL_EXEC_EL1 (U(1) << 4)
 
+/*
+ * ACTLR_EL3 bit to enable counting of events in the
+ * NVIDIA specific Performance Monitors extension.
+ */
+#define DENVER_CPU_ENABLE_SPME		(U(1) << 6)
+
 #ifndef __ASSEMBLER__
 
 /* Disable Dynamic Code Optimisation */

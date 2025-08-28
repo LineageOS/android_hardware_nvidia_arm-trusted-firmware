@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2021-2023, Arm Limited. All rights reserved.
+ * Copyright (c) 2022-2024, NVIDIA CORPORATION. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -9,6 +10,8 @@
 
 
 #define CORTEX_A78C_MIDR			        U(0x410FD4B1)
+
+#define CORTEX_A78C_ACTLR_CLUSTERPMUEN_BIT		(ULL(1) << 12)
 
 /* Cortex-A76 loop count for CVE-2022-23960 mitigation */
 #define CORTEX_A78C_BHB_LOOP_COUNT			U(32)
@@ -21,11 +24,26 @@
 #define CORTEX_A78C_CPUACTLR2_EL1_BIT_40 		(ULL(1) << 40)
 
 /*******************************************************************************
+ * CPU Auxiliary Control register 3 specific definitions.
+ ******************************************************************************/
+#define CORTEX_A78C_CPUACTLR3_EL1			S3_0_C15_C1_2
+#define CORTEX_A78C_CPUACTL3_EL1_BIT_58			(ULL(1) << 58)
+
+/*******************************************************************************
+ * CPU Auxiliary Control register 5 specific definitions.
+ ******************************************************************************/
+#define CORTEX_A78C_ACTLR5_EL1				S3_0_C15_C9_0
+#define CORTEX_A78C_ACTLR5_EL1_BIT_39			(ULL(1) << 39)
+#define CORTEX_A78C_ACTLR5_EL1_BIT_55			(ULL(1) << 55)
+#define CORTEX_A78C_ACTLR5_EL1_BIT_56			(ULL(1) << 56)
+
+/*******************************************************************************
  * CPU Extended Control register specific definitions.
  ******************************************************************************/
-#define CORTEX_A78C_CPUECTLR_EL1		        S3_0_C15_C1_4
+#define CORTEX_A78C_CPUECTLR_EL1			S3_0_C15_C1_4
 #define CORTEX_A78C_CPUECTLR_EL1_BIT_6		        (ULL(1) << 6)
 #define CORTEX_A78C_CPUECTLR_EL1_BIT_7		        (ULL(1) << 7)
+#define CORTEX_A78C_CPUECTLR_EL1_BIT_46			(ULL(1) << 46)
 #define CORTEX_A78C_CPUECTLR_EL1_MM_ASP_EN		(ULL(1) << 53)
 
 /*******************************************************************************

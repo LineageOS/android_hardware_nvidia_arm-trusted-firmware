@@ -13,6 +13,9 @@ ARM_ARCH_MINOR := 2
 ENABLE_CONSOLE_SPE			:= 1
 $(eval $(call add_define,ENABLE_CONSOLE_SPE))
 
+ENABLE_TEGRA_PERFMON			?= 1
+$(eval $(call add_define,ENABLE_TEGRA_PERFMON))
+
 ENABLE_STRICT_CHECKING_MODE		:= 1
 $(eval $(call add_define,ENABLE_STRICT_CHECKING_MODE))
 
@@ -26,8 +29,8 @@ PROGRAMMABLE_RESET_ADDRESS		:= 1
 COLD_BOOT_SINGLE_CPU			:= 1
 
 # platform settings
-TZDRAM_BASE				:= 0x40000000
-$(eval $(call add_define,TZDRAM_BASE))
+PLAT_BL31_BASE				:= 0x40000000
+$(eval $(call add_define,PLAT_BL31_BASE))
 
 MAX_XLAT_TABLES				:= 25
 $(eval $(call add_define,MAX_XLAT_TABLES))
@@ -38,6 +41,9 @@ $(eval $(call add_define,MAX_MMAP_REGIONS))
 # enable RAS handling
 HANDLE_EA_EL3_FIRST_NS			:= 1
 ENABLE_FEAT_RAS				:= 1
+
+# include common makefiles
+include plat/nvidia/tegra/common/tegra_common.mk
 
 # platform files
 PLAT_INCLUDES		+=	-Iplat/nvidia/tegra/include/t194 \

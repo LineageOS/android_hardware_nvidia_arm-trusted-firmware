@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2020-2022, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2022, NVIDIA Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -8,6 +9,7 @@
 #define SPMD_SVC_H
 
 #ifndef __ASSEMBLER__
+#include <context.h>
 #include <services/ffa_svc.h>
 #include <stdint.h>
 
@@ -36,6 +38,8 @@ uint64_t spmd_smc_switch_state(uint32_t smc_fid,
 			       uint64_t x4,
 			       void *handle,
 			       uint64_t flags);
+gp_regs_t *spmd_ffa_direct_message(gp_regs_t *gpregs);
+
 #endif /* __ASSEMBLER__ */
 
 #endif /* SPMD_SVC_H */

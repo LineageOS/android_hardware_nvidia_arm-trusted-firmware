@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2020, ARM Limited and Contributors. All rights reserved.
- * Copyright (c) 2020, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2020-2022, NVIDIA Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -89,6 +89,10 @@ endfunc console_spe_register
 	 * --------------------------------------------------------
 	 */
 func console_spe_core_putc
+	/* save x3 as it will get clobbered */
+	adr	x2, spe_console_stack
+	str	x3, [x2]
+
 	/* Check the input parameter */
 	cbz	x1, putc_error
 
@@ -115,9 +119,18 @@ not_eol:
 	orr	w2, w2, w3
 	str	w2, [x1]
 
+	/* restore x3 */
+	adr	x2, spe_console_stack
+	ldr	x3, [x2]
+	mov	x2, #0
 	ret
 putc_error:
 	mov	w0, #-1
+
+	/* restore x3 */
+	adr	x2, spe_console_stack
+	ldr	x3, [x2]
+	mov	x2, #0
 	ret
 endfunc console_spe_core_putc
 
@@ -185,3 +198,9 @@ func console_spe_flush
 	ldr	x0, [x0, #CONSOLE_T_BASE]
 	b	console_spe_core_flush
 endfunc console_spe_flush
+
+	/* scratch space to store x3 register from console_core_putc */
+	.data
+	.align 3
+spe_console_stack:
+	.quad	0

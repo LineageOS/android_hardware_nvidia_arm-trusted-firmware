@@ -266,6 +266,11 @@ void gic_fmu_disable_all_sm_blkid(uintptr_t base, unsigned int blkid)
 {
 	uint32_t smen, max_smid = U(0);
 
+	/* Nothing to be done for the reserved block */
+	if (blkid == FMU_BLK_RSVD) {
+		return;
+	}
+
 	/* Sanity check block ID */
 	assert((blkid >= FMU_BLK_GICD) && (blkid <= FMU_BLK_PPI31));
 

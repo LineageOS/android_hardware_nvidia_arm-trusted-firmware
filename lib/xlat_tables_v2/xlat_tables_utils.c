@@ -38,16 +38,16 @@ void xlat_tables_print(__unused xlat_ctx_t *ctx)
 
 void xlat_mmap_print(const mmap_region_t *mmap)
 {
-	printf("mmap:\n");
+	VERBOSE("mmap:\n");
 	const mmap_region_t *mm = mmap;
 
 	while (mm->size != 0U) {
-		printf(" VA:0x%lx  PA:0x%llx  size:0x%zx  attr:0x%x  granularity:0x%zx\n",
+		VERBOSE(" VA:0x%lx  PA:0x%llx  size:0x%zx  attr:0x%x  granularity:0x%zx\n",
 		       mm->base_va, mm->base_pa, mm->size, mm->attr,
 		       mm->granularity);
 		++mm;
 	};
-	printf("\n");
+	VERBOSE("\n");
 }
 
 /* Print the attributes of the specified block descriptor. */
@@ -57,18 +57,18 @@ static void xlat_desc_print(const xlat_ctx_t *ctx, uint64_t desc)
 	int xlat_regime = ctx->xlat_regime;
 
 	if (mem_type_index == ATTR_IWBWA_OWBWA_NTR_INDEX) {
-		printf("MEM");
+		VERBOSE("MEM");
 	} else if (mem_type_index == ATTR_NON_CACHEABLE_INDEX) {
-		printf("NC");
+		VERBOSE("NC");
 	} else {
 		assert(mem_type_index == ATTR_DEVICE_INDEX);
-		printf("DEV");
+		VERBOSE("DEV");
 	}
 
 	if ((xlat_regime == EL3_REGIME) || (xlat_regime == EL2_REGIME)) {
 		/* For EL3 and EL2 only check the AP[2] and XN bits. */
-		printf(((desc & LOWER_ATTRS(AP_RO)) != 0ULL) ? "-RO" : "-RW");
-		printf(((desc & UPPER_ATTRS(XN)) != 0ULL) ? "-XN" : "-EXEC");
+		VERBOSE("%s", ((desc & LOWER_ATTRS(AP_RO)) != 0ULL) ? "-RO" : "-RW");
+		VERBOSE("%s", ((desc & UPPER_ATTRS(XN)) != 0ULL) ? "-XN" : "-EXEC");
 	} else {
 		assert(xlat_regime == EL1_EL0_REGIME);
 		/*
@@ -86,39 +86,39 @@ static void xlat_desc_print(const xlat_ctx_t *ctx, uint64_t desc)
 
 		assert((xn_perm == xn_mask) || (xn_perm == 0ULL));
 #endif
-		printf(((desc & LOWER_ATTRS(AP_RO)) != 0ULL) ? "-RO" : "-RW");
+		VERBOSE("%s", ((desc & LOWER_ATTRS(AP_RO)) != 0ULL) ? "-RO" : "-RW");
 		/* Only check one of PXN and UXN, the other one is the same. */
-		printf(((desc & UPPER_ATTRS(PXN)) != 0ULL) ? "-XN" : "-EXEC");
+		VERBOSE("%s", ((desc & UPPER_ATTRS(PXN)) != 0ULL) ? "-XN" : "-EXEC");
 		/*
 		 * Privileged regions can only be accessed from EL1, user
 		 * regions can be accessed from EL1 and EL0.
 		 */
-		printf(((desc & LOWER_ATTRS(AP_ACCESS_UNPRIVILEGED)) != 0ULL)
+		VERBOSE("%s", ((desc & LOWER_ATTRS(AP_ACCESS_UNPRIVILEGED)) != 0ULL)
 			  ? "-USER" : "-PRIV");
 	}
 
 #if ENABLE_RME
 	switch (desc & LOWER_ATTRS(EL3_S1_NSE | NS)) {
 	case 0ULL:
-		printf("-S");
+		VERBOSE("-S");
 		break;
 	case LOWER_ATTRS(NS):
-		printf("-NS");
+		VERBOSE("-NS");
 		break;
 	case LOWER_ATTRS(EL3_S1_NSE):
-		printf("-RT");
+		VERBOSE("-RT");
 		break;
 	default: /* LOWER_ATTRS(EL3_S1_NSE | NS) */
-		printf("-RL");
+		VERBOSE("-RL");
 	}
 #else
-	printf(((LOWER_ATTRS(NS) & desc) != 0ULL) ? "-NS" : "-S");
+	VERBOSE("%s", ((LOWER_ATTRS(NS) & desc) != 0ULL) ? "-NS" : "-S");
 #endif
 
 #ifdef __aarch64__
 	/* Check Guarded Page bit */
 	if ((desc & GP) != 0ULL) {
-		printf("-GP");
+		VERBOSE("-GP");
 	}
 #endif
 }
@@ -129,9 +129,6 @@ static const char * const level_spacers[] = {
 	"    [LV2] ",
 	"      [LV3] "
 };
-
-static const char *invalid_descriptors_ommited =
-		"%s(%d invalid descriptors omitted)\n";
 
 /*
  * Recursive function that reads the translation tables passed as an argument
@@ -163,7 +160,7 @@ static void xlat_tables_print_internal(xlat_ctx_t *ctx, uintptr_t table_base_va,
 		if ((desc & DESC_MASK) == INVALID_DESC) {
 
 			if (invalid_row_count == 0) {
-				printf("%sVA:0x%lx size:0x%zx\n",
+				VERBOSE("%sVA:0x%lx size:0x%zx\n",
 				       level_spacers[level],
 				       table_idx_va, level_size);
 			}
@@ -172,7 +169,7 @@ static void xlat_tables_print_internal(xlat_ctx_t *ctx, uintptr_t table_base_va,
 		} else {
 
 			if (invalid_row_count > 1) {
-				printf(invalid_descriptors_ommited,
+				VERBOSE("%s(%d invalid descriptors omitted)\n",
 				       level_spacers[level],
 				       invalid_row_count - 1);
 			}
@@ -191,7 +188,7 @@ static void xlat_tables_print_internal(xlat_ctx_t *ctx, uintptr_t table_base_va,
 				 * but instead points to the next translation
 				 * table in the translation table walk.
 				 */
-				printf("%sVA:0x%lx size:0x%zx\n",
+				VERBOSE("%sVA:0x%lx size:0x%zx\n",
 				       level_spacers[level],
 				       table_idx_va, level_size);
 
@@ -201,12 +198,12 @@ static void xlat_tables_print_internal(xlat_ctx_t *ctx, uintptr_t table_base_va,
 					(uint64_t *)addr_inner,
 					XLAT_TABLE_ENTRIES, level + 1U);
 			} else {
-				printf("%sVA:0x%lx PA:0x%" PRIx64 " size:0x%zx ",
+				VERBOSE("%sVA:0x%lx PA:0x%" PRIx64 " size:0x%zx ",
 				       level_spacers[level], table_idx_va,
 				       (uint64_t)(desc & TABLE_ADDR_MASK),
 				       level_size);
 				xlat_desc_print(ctx, desc);
-				printf("\n");
+				VERBOSE("\n");
 			}
 		}
 
@@ -215,7 +212,7 @@ static void xlat_tables_print_internal(xlat_ctx_t *ctx, uintptr_t table_base_va,
 	}
 
 	if (invalid_row_count > 1) {
-		printf(invalid_descriptors_ommited,
+		VERBOSE("%s(%d invalid descriptors omitted)\n",
 		       level_spacers[level], invalid_row_count - 1);
 	}
 }
@@ -391,7 +388,7 @@ static int xlat_get_mem_attributes_internal(const xlat_ctx_t *ctx,
 #if LOG_LEVEL >= LOG_LEVEL_VERBOSE
 	VERBOSE("Attributes: ");
 	xlat_desc_print(ctx, desc);
-	printf("\n");
+	VERBOSE("\n");
 #endif /* LOG_LEVEL >= LOG_LEVEL_VERBOSE */
 
 	assert(attributes != NULL);

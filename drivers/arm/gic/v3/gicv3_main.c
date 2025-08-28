@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2024, Arm Limited and Contributors. All rights reserved.
- * Copyright (c) 2023, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2021-2023, NVIDIA Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -192,6 +192,22 @@ void __init gicv3_distif_init(void)
 
 	assert(IS_IN_EL3());
 
+#if GIC600AE_ERRATA_WA_1568841 || GIC600AE_ERRATA_WA_2079287
+	/*
+	 * GIC-600AE erratum 1568841 is a cat B erratum that applies to
+	 * revisions r0p0 - r0p2 and is still open. The workaround disable SPIs
+	 * by writing to ICENABLER<n> before reprogramming them, especially if
+	 * rerouting them by programming GICD_IROUTER.
+	 *
+	 * GIC-600AE erratum 2079287 is a cat B erratum that applies to
+	 * revisions r0p0 - r0p2 and is still open. The workaround is to write
+	 * 0xFFFFFFFF to the GICD_ICENABLER1 register, before initializing the
+	 * GIC to avoid a fault being reported when lockstep is lost between
+	 * the primary and secondary GIC instances.
+	 */
+	gicv3_apply_errata_wa_1568841_2079287(gicv3_driver_data->gicd_base);
+#endif
+
 	/*
 	 * Clear the "enable" bits for G0/G1S/G1NS interrupts before configuring
 	 * the ARE_S bit. The Distributor might generate a system error
@@ -209,6 +225,16 @@ void __init gicv3_distif_init(void)
 
 	/* Set the default attribute of all (E)SPIs */
 	gicv3_spis_config_defaults(gicv3_driver_data->gicd_base);
+
+#if GICV3_RESTRICT_GICT_GICP_ACCESS
+	/*
+	 * Restrict access to GIC Trace and PMU to secure only by
+	 * Set TNS and PNS bit in GICD_SAC register
+	 */
+	bitmap = gicd_read_sac(gicv3_driver_data->gicd_base);
+	bitmap &= ~(SAC_GICTNS | SAC_GICPNS);
+	gicd_write_sac(gicv3_driver_data->gicd_base, bitmap);
+#endif
 
 	bitmap = gicv3_secure_spis_config_props(
 			gicv3_driver_data->gicd_base,
@@ -617,6 +643,8 @@ void gicv3_rdistif_save(unsigned int proc_num,
 		gicr_ipriorityr_read(gicr_base, i);
 	}
 
+	flush_dcache_range((uint64_t)rdist_ctx, sizeof(gicv3_redist_ctx_t));
+
 	/*
 	 * Call the pre-save hook that implements the IMP DEF sequence that may
 	 * be required on some GIC implementations. As this may need to access
@@ -819,6 +847,8 @@ void gicv3_distif_save(gicv3_dist_ctx_t * const dist_ctx)
 	/* Save GICD_IROUTERE for INTIDs 4096 - 5119 */
 	SAVE_GICD_EREGS(gicd_base, dist_ctx, num_eints, irouter, IROUTE);
 
+	flush_dcache_range((uint64_t)dist_ctx, sizeof(gicv3_dist_ctx_t));
+
 	/*
 	 * GICD_ITARGETSR<n> and GICD_SPENDSGIR<n> are RAZ/WI when
 	 * GICD_CTLR.ARE_(S|NS) bits are set which is the case for our GICv3
@@ -841,6 +871,22 @@ void gicv3_distif_init_restore(const gicv3_dist_ctx_t * const dist_ctx)
 	assert(dist_ctx != NULL);
 
 	uintptr_t gicd_base = gicv3_driver_data->gicd_base;
+
+#if GIC600AE_ERRATA_WA_1568841 || GIC600AE_ERRATA_WA_2079287
+	/*
+	 * GIC-600AE erratum 1568841 is a cat B erratum that applies to
+	 * revisions r0p0 - r0p2 and is still open. The workaround disable SPIs
+	 * by writing to ICENABLER<n> before reprogramming them, especially if
+	 * rerouting them by programming GICD_IROUTER.
+	 *
+	 * GIC-600AE erratum 2079287 is a cat B erratum that applies to
+	 * revisions r0p0 - r0p2 and is still open. The workaround is to write
+	 * 0xFFFFFFFF to the GICD_ICENABLER1 register, before initializing the
+	 * GIC to avoid a fault being reported when lockstep is lost between
+	 * the primary and secondary GIC instances.
+	 */
+	gicv3_apply_errata_wa_1568841_2079287(gicv3_driver_data->gicd_base);
+#endif
 
 	/*
 	 * Clear the "enable" bits for G0/G1S/G1NS interrupts before configuring

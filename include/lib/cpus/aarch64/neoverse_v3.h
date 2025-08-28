@@ -22,7 +22,13 @@
 /*******************************************************************************
  * CPU Power Control register specific definitions
  ******************************************************************************/
-#define NEOVERSE_V3_CPUPWRCTLR_EL1			S3_0_C15_C2_7
+#define NEOVERSE_V3_CPUPWRCTLR_EL1				S3_0_C15_C2_7
 #define NEOVERSE_V3_CPUPWRCTLR_EL1_CORE_PWRDN_BIT		U(1)
+
+/*******************************************************************************
+ * CPU Auxiliary Control register 6 specific definitions.
+ ******************************************************************************/
+#define NEOVERSE_POSEIDON_CPUACTLR6_EL1				S3_0_C15_C8_1
+#define NEOVERSE_POSEIDON_CPUACTLR6_EL1_BIT_41			(ULL(1) << 41)
 
 #endif /* NEOVERSE_V3_H */

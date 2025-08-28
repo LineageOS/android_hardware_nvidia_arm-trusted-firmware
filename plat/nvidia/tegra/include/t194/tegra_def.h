@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019-2022, NVIDIA CORPORATION. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -19,6 +19,20 @@
  ******************************************************************************/
 #define PLATFORM_CLUSTER_COUNT		U(4)
 #define PLATFORM_MAX_CPUS_PER_CLUSTER	U(2)
+
+/* Platform power domain constants */
+#define PLAT_MAX_PWR_LVL		MPIDR_AFFLVL2
+#define PLATFORM_CORE_COUNT		(PLATFORM_CLUSTER_COUNT * \
+					 PLATFORM_MAX_CPUS_PER_CLUSTER)
+#define PLAT_NUM_PWR_DOMAINS		(PLATFORM_CORE_COUNT + \
+					 PLATFORM_CLUSTER_COUNT + U(1))
+
+/* Number of GICR frames */
+#define PLATFORM_GICR_FRAME_COUNT	PLATFORM_CORE_COUNT
+
+ /* Tegra CORE and CLUSTER affinity values */
+#define TEGRA_CORE_AFFINITY		MPIDR_AFF0_SHIFT
+#define TEGRA_CLUSTER_AFFINITY		MPIDR_AFF1_SHIFT
 
 /*******************************************************************************
  * Chip specific page table and MMU setup constants

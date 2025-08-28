@@ -25,6 +25,7 @@ struct ivc {
 	void (*notify)(const struct ivc *);
 	uint32_t nframes;
 	uint32_t frame_size;
+	uint32_t socket;
 };
 
 /* callback handler for notify on receiving a response */

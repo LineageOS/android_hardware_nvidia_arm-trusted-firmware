@@ -25,6 +25,7 @@ typedef enum tegra_platform {
 	TEGRA_PLATFORM_LINSIM,
 	TEGRA_PLATFORM_UNIT_FPGA,
 	TEGRA_PLATFORM_VIRT_DEV_KIT,
+	TEGRA_PLATFORM_VSP,
 	TEGRA_PLATFORM_MAX,
 } tegra_platform_t;
 
@@ -49,51 +50,140 @@ typedef enum tegra_platform {
 #define TEGRA_PRE_SI_ASIM_LINSIM	U(5)
 #define TEGRA_PRE_SI_DSIM_ASIM_LINSIM	U(6)
 #define TEGRA_PRE_SI_VDK		U(8)
+#define TEGRA_PRE_SI_VSP		U(9)
 
 /*
  * Read the chip ID value
  */
 static uint32_t tegra_get_chipid(void)
 {
-	return mmio_read_32(TEGRA_MISC_BASE + HARDWARE_REVISION_OFFSET);
+#if TEGRA_MISC_BASE
+	return (mmio_read_32(TEGRA_MISC_BASE + HARDWARE_REVISION_OFFSET) >>
+		CHIP_ID_SHIFT) & CHIP_ID_MASK;
+#else
+	return 0;
+#endif
 }
 
 /*
  * Read the chip's major version from chip ID value
  */
-uint32_t tegra_get_chipid_major(void)
+static uint32_t tegra_get_chipid_major(void)
 {
-	return (tegra_get_chipid() >> MAJOR_VERSION_SHIFT) & MAJOR_VERSION_MASK;
+#if TEGRA_MISC_BASE
+	uint32_t val = mmio_read_32(TEGRA_MISC_BASE + HARDWARE_REVISION_OFFSET);
+	return (val >> MAJOR_VERSION_SHIFT) & MAJOR_VERSION_MASK;
+#else
+	return 0;
+#endif
 }
 
 /*
  * Read the chip's minor version from the chip ID value
  */
-uint32_t tegra_get_chipid_minor(void)
+static uint32_t tegra_get_chipid_minor(void)
 {
-	return (tegra_get_chipid() >> MINOR_VERSION_SHIFT) & MINOR_VERSION_MASK;
+#if TEGRA_MISC_BASE
+	uint32_t val = mmio_read_32(TEGRA_MISC_BASE + HARDWARE_REVISION_OFFSET);
+	return (val >> MINOR_VERSION_SHIFT) & MINOR_VERSION_MASK;
+#else
+	return 0;
+#endif
 }
 
 /*
- * Read the chip's pre_si_platform valus from the chip ID value
+ * Read the chip's pre_si_platform value from the chip ID value
  */
 static uint32_t tegra_get_chipid_pre_si_platform(void)
 {
-	return (tegra_get_chipid() >> PRE_SI_PLATFORM_SHIFT) & PRE_SI_PLATFORM_MASK;
+#if TEGRA_MISC_BASE
+	uint32_t val = mmio_read_32(TEGRA_MISC_BASE + HARDWARE_REVISION_OFFSET);
+	return (val >> PRE_SI_PLATFORM_SHIFT) & PRE_SI_PLATFORM_MASK;
+#else
+	return 0;
+#endif
+}
+
+/*
+ * Helper function to check if the chip's SIPID is supported
+ */
+static bool tegra_is_sipid_supported(void)
+{
+#if TEGRA_SIP_MISC_BASE
+	return (mmio_read_32(TEGRA_SIP_MISC_BASE + SIP_MISC_MAGIC_OFFSET) ==
+		SIP_MISC_MAGIC_VAL);
+#else
+	return false;
+#endif
+}
+
+/*
+ * Read the chip's SIPID value
+ */
+static uint32_t tegra_get_sipid(void)
+{
+#if TEGRA_SIP_MISC_BASE
+	return (mmio_read_32(TEGRA_SIP_MISC_BASE + SIP_MISC_ID_OFFSET) &
+		SIP_MISC_ID_SIPID_MASK);
+#else
+	return 0;
+#endif
+}
+
+/*
+ * Read the chip's major version from the SIPID value
+ */
+static uint32_t tegra_get_sipid_major(void)
+{
+#if TEGRA_SIP_MISC_BASE
+	return (mmio_read_32(TEGRA_SIP_MISC_BASE + SIP_MISC_ID_OFFSET) &
+		SIP_MISC_ID_REVISION_MASK) >> SIP_MISC_ID_REVISION_SHIFT;
+#else
+	return 0;
+#endif
+}
+
+/*
+ * Read the chip's minor version from the SIPID value
+ */
+static uint32_t tegra_get_sipid_minor(void)
+{
+#if TEGRA_SIP_MISC_BASE
+	return (mmio_read_32(TEGRA_SIP_MISC_BASE + SIP_MISC_FEATURE_OFFSET) &
+		SIP_MISC_FEATURE_TBL_VER_MASK) >> SIP_MISC_FEATURE_TBL_VER_SHIFT;
+#else
+	return 0;
+#endif
+}
+
+/*
+ * Read the chip's pre_si_platform value from the SIP_MISC_FEATURE value
+ */
+static uint32_t tegra_get_sipid_pre_si_platform(void)
+{
+#if TEGRA_SIP_MISC_BASE
+	return mmio_read_32(TEGRA_SIP_MISC_BASE + SIP_MISC_FEATURE_OFFSET) &
+		SIP_MISC_FEATURE_PRE_SI_MASK;
+#else
+	return 0;
+#endif
 }
 
 bool tegra_chipid_is_t186(void)
 {
-	uint32_t chip_id = (tegra_get_chipid() >> CHIP_ID_SHIFT) & CHIP_ID_MASK;
+	return (tegra_get_chipid() == TEGRA_CHIPID_TEGRA18);
+}
 
-	return (chip_id == TEGRA_CHIPID_TEGRA18);
+bool tegra_chipid_is_t186_a01(void)
+{
+	return (tegra_get_chipid() == TEGRA_CHIPID_TEGRA18) &&
+	       (tegra_get_chipid_major() == 0x1U) &&
+	       (tegra_get_chipid_minor() == 0x1U);
 }
 
 bool tegra_chipid_is_t210(void)
 {
-	uint32_t chip_id = (tegra_get_chipid() >> CHIP_ID_SHIFT) & CHIP_ID_MASK;
-
-	return (chip_id == TEGRA_CHIPID_TEGRA21);
+	return (tegra_get_chipid() == TEGRA_CHIPID_TEGRA21);
 }
 
 bool tegra_chipid_is_t210_b01(void)
@@ -103,23 +193,36 @@ bool tegra_chipid_is_t210_b01(void)
 
 bool tegra_chipid_is_t194(void)
 {
-	uint32_t chip_id = (tegra_get_chipid() >> CHIP_ID_SHIFT) & CHIP_ID_MASK;
+	return (tegra_get_chipid() == TEGRA_CHIPID_TEGRA19);
+}
 
-	return (chip_id == TEGRA_CHIPID_TEGRA19);
+bool tegra_chipid_is_t234(void)
+{
+	return ((tegra_get_chipid() == TEGRA_CHIPID_TEGRA23) &&
+		(tegra_get_chipid_major() == 0x4U));
+}
+
+bool tegra_chipid_is_t239(void)
+{
+	return ((tegra_get_chipid() == TEGRA_CHIPID_TEGRA23) &&
+		(tegra_get_chipid_major() == 0x9U));
+}
+
+bool tegra_chipid_is_th500(void)
+{
+	return ((tegra_get_chipid() == TEGRA_CHIPID_TEGRA24) &&
+		(tegra_get_chipid_major() == 0x1U));
 }
 
 /*
- * Read the chip ID value and derive the platform
+ * Read platform type from HIDREV major and minor bits.
  */
-static tegra_platform_t tegra_get_platform(void)
-{
-	uint32_t major, minor, pre_si_platform;
-	tegra_platform_t ret;
 
-	/* get the major/minor chip ID values */
-	major = tegra_get_chipid_major();
-	minor = tegra_get_chipid_minor();
-	pre_si_platform = tegra_get_chipid_pre_si_platform();
+static tegra_platform_t from_hidrev_major_minor_rev(void)
+{
+	uint32_t major = tegra_get_chipid_major();
+	uint32_t minor = tegra_get_chipid_minor();
+	tegra_platform_t ret;
 
 	if (major == 0U) {
 		/*
@@ -169,9 +272,30 @@ static tegra_platform_t tegra_get_platform(void)
 			ret = TEGRA_PLATFORM_MAX;
 			break;
 		}
+	} else {
+		/* Actual silicon platforms have a non-zero major version */
+		ret = TEGRA_PLATFORM_SILICON;
+	}
 
-	} else if (pre_si_platform > 0U) {
+	return ret;
+}
 
+/*
+ * Read platform type from HIDREV pre_si bits.
+ */
+
+static tegra_platform_t from_sipid_hidrev_pre_si_platform(void)
+{
+	uint32_t pre_si_platform;
+	tegra_platform_t ret;
+
+	if (tegra_is_sipid_supported()) {
+		pre_si_platform = tegra_get_sipid_pre_si_platform();
+	} else {
+		pre_si_platform = tegra_get_chipid_pre_si_platform();
+	}
+
+	if (pre_si_platform > 0U) {
 		switch (pre_si_platform) {
 		/*
 		 * Cadence's QuickTurn emulation system is a Solaris-based
@@ -212,14 +336,51 @@ static tegra_platform_t tegra_get_platform(void)
 			ret = TEGRA_PLATFORM_VIRT_DEV_KIT;
 			break;
 
+		/*
+		 * The VSP pre-si development platform.
+		 */
+		case TEGRA_PRE_SI_VSP:
+			ret = TEGRA_PLATFORM_VSP;
+			break;
+
 		default:
 			ret = TEGRA_PLATFORM_MAX;
 			break;
 		}
-
 	} else {
 		/* Actual silicon platforms have a non-zero major version */
 		ret = TEGRA_PLATFORM_SILICON;
+	}
+
+	return ret;
+}
+
+/*
+ * Read the chip ID value and derive the platform
+ */
+static tegra_platform_t tegra_get_platform(void)
+{
+	tegra_platform_t ret;
+	uint32_t chip_id;
+
+	if (tegra_is_sipid_supported()) {
+		chip_id = tegra_get_sipid();
+	} else {
+		/* get the chip_id/major/minor chip ID values */
+		chip_id = tegra_get_chipid();
+	}
+
+	switch (chip_id) {
+	case TEGRA_CHIPID_TEGRA13:
+	case TEGRA_CHIPID_TEGRA18:
+	case TEGRA_CHIPID_TEGRA21:
+		ret = from_hidrev_major_minor_rev();
+		break;
+
+	/* For chip id T194 and later */
+	default:
+		ret = from_sipid_hidrev_pre_si_platform();
+		break;
 	}
 
 	return ret;
@@ -263,6 +424,11 @@ bool tegra_platform_is_virt_dev_kit(void)
 	return ((tegra_get_platform() == TEGRA_PLATFORM_VIRT_DEV_KIT) ? true : false);
 }
 
+bool tegra_platform_is_vsp(void)
+{
+	return ((tegra_get_platform() == TEGRA_PLATFORM_VSP) ? true : false);
+}
+
 /*
  * This function returns soc version which mainly consist of below fields
  *
@@ -272,9 +438,17 @@ bool tegra_platform_is_virt_dev_kit(void)
  */
 int32_t plat_get_soc_version(void)
 {
-	uint32_t chip_id = (tegra_get_chipid() >> CHIP_ID_SHIFT) & CHIP_ID_MASK;
-	uint32_t major_rev = tegra_get_chipid_major();
+	uint32_t chip_id;
+	uint32_t major_rev;
 	uint32_t manfid = SOC_ID_SET_JEP_106(JEDEC_NVIDIA_BKID, JEDEC_NVIDIA_MFID);
+
+	if (tegra_is_sipid_supported()) {
+		chip_id = tegra_get_sipid();
+		major_rev = tegra_get_sipid_major();
+	} else {
+		chip_id = tegra_get_chipid();
+		major_rev = tegra_get_chipid_major();
+	}
 
 	return (int32_t)(manfid | (((chip_id << MAJOR_VERSION_SHIFT) | major_rev) &
 			 SOC_ID_IMPL_DEF_MASK));
@@ -283,13 +457,33 @@ int32_t plat_get_soc_version(void)
 /*
  * This function returns soc revision in below format
  *
- *   soc_revision[8:15] = major version number
- *   soc_revision[0:7]  = minor version number
+ * For Tegra234 onwards, the encoding is
+ *   soc_revision[30:0] = minor version number
+ *
+ * For older SOCs, the encoding is
+ *   soc_revision[30:16] = 0
+ *   soc_revision[15:8] = major version number
+ *   soc_revision[7:0]  = minor version number
  */
 int32_t plat_get_soc_revision(void)
 {
-	return (int32_t)(((tegra_get_chipid_major() << 8) | tegra_get_chipid_minor()) &
-			 SOC_ID_REV_MASK);
+	int32_t revision;
+
+	/*
+	 * From Tegra234 onwards, the minor version field encodes the
+	 * revision. For older SOCs, it is a combination of the major and
+	 * minor version fields.
+	 */
+	if (tegra_get_sipid() >= TEGRA_CHIPID_TEGRA410) {
+		revision = tegra_get_sipid_minor();
+	} else if ((tegra_get_chipid() >= TEGRA_CHIPID_TEGRA23) && (tegra_get_chipid() < TEGRA_CHIPID_TEGRA410)) {
+		revision = tegra_get_chipid_minor();
+	} else {
+		revision = (int32_t)((tegra_get_chipid_major() << 8) |
+				       tegra_get_chipid_minor());
+	}
+
+	return (revision & SOC_ID_REV_MASK);
 }
 
 /*****************************************************************************

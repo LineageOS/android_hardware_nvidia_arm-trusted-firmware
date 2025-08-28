@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2019-2024, Arm Limited. All rights reserved.
- * Copyright (c) 2021-2023, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2019-2024, ARM Limited. All rights reserved.
+ * Copyright (c) 2021-2024, NVIDIA Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -84,6 +84,49 @@ workaround_reset_end cortex_a78_ae, ERRATUM(2395408)
 
 check_erratum_ls cortex_a78_ae, ERRATUM(2395408), CPU_REV(0, 1)
 
+workaround_reset_start cortex_a78_ae, ERRATUM(2466780), ERRATA_A78_AE_2466780
+	/* flush the mop cache */
+	mov_imm	x0, 0x3
+	msr	CPUPSELR_EL3, x0
+	mov_imm	x0, 0xEE010F10
+	msr	CPUPOR_EL3, x0
+	mov_imm	x0, 0xFF1F0FFE
+	msr	CPUPMR_EL3, x0
+	mov_imm	x0, 0x100000004003FF
+	msr	CPUPCR_EL3,x0
+	isb
+workaround_reset_end cortex_a78_ae, ERRATUM(2466780)
+
+check_erratum_range cortex_a78_ae, ERRATUM(2466780), CPU_REV(0, 0), CPU_REV(0, 2)
+
+workaround_reset_start cortex_a78_ae, ERRATUM(2743229), ERRATA_A78_AE_2743229
+	/* Set bit [56:55]=b'01 in CPUACTLR5 */
+	sysreg_bit_set CORTEX_A78_AE_ACTLR5_EL1, CORTEX_A78_AE_ACTLR5_EL1_BIT_55
+	sysreg_bit_clear CORTEX_A78_AE_ACTLR5_EL1, CORTEX_A78_AE_ACTLR5_EL1_BIT_56
+workaround_reset_end cortex_a78_ae, ERRATUM(2743229)
+
+check_erratum_range cortex_a78_ae, ERRATUM(2743229), CPU_REV(0, 0), CPU_REV(0, 2)
+
+workaround_runtime_start cortex_a78_ae, ERRATUM(2743093), ERRATA_A78_AE_2743093
+	/* dsb before isb of power down sequence */
+	dsb	sy
+workaround_runtime_end cortex_a78_ae, ERRATUM(2743093)
+
+check_erratum_ls cortex_a78_ae, ERRATUM(2743093), CPU_REV(0, 2)
+
+workaround_reset_start cortex_a78_ae, ERRATUM(2855379), ERRATA_A78_AE_2855379
+	/* set CPUACTLR5_EL1[39] */
+	sysreg_bit_set CORTEX_A78_AE_ACTLR5_EL1, CORTEX_A78_AE_ACTLR5_EL1_BIT_39
+workaround_reset_end cortex_a78_ae, ERRATUM(2855379)
+
+check_erratum_ls cortex_a78_ae, ERRATUM(2855379), CPU_REV(0, 1)
+
+workaround_reset_start cortex_a78_ae, ERRATUM(3604886), ERRATA_A78_AE_3604886
+	sysreg_bit_set CORTEX_A78_AE_CPUACTLR3_EL1, CORTEX_A78_AE_CPUACTLR3_EL1_BIT_58
+workaround_reset_end cortex_a78_ae, ERRATUM(3604886)
+
+check_erratum_range cortex_a78_ae, ERRATUM(3604886), CPU_REV(0, 0), CPU_REV(0, 3)
+
 workaround_reset_start cortex_a78_ae, CVE(2022, 23960), WORKAROUND_CVE_2022_23960
 #if IMAGE_BL31
 	/*
@@ -96,6 +139,12 @@ workaround_reset_end cortex_a78_ae, CVE(2022, 23960)
 
 check_erratum_chosen cortex_a78_ae, CVE(2022, 23960), WORKAROUND_CVE_2022_23960
 
+workaround_reset_start cortex_a78ae, CVE(2024, 5660), WORKAROUND_CVE_2024_5660
+	sysreg_bit_set CORTEX_A78_CPUECTLR_EL1, CORTEX_A78_CPUECTLR_EL1_BIT_46
+workaround_reset_end cortex_a78ae, CVE(2024, 5660)
+
+check_erratum_chosen cortex_a78ae, CVE(2024, 5660), WORKAROUND_CVE_2024_5660
+
 cpu_reset_func_start cortex_a78_ae
 #if ENABLE_FEAT_AMU
 	/* Make sure accesses from EL0/EL1 and EL2 are not trapped to EL3 */
@@ -107,10 +156,6 @@ cpu_reset_func_start cortex_a78_ae
 	/* Enable group0 counters */
 	mov	x0, #CORTEX_A78_AMU_GROUP0_MASK
 	msr	CPUAMCNTENSET0_EL0, x0
-
-	/* Enable group1 counters */
-	mov	x0, #CORTEX_A78_AMU_GROUP1_MASK
-	msr	CPUAMCNTENSET1_EL0, x0
 #endif
 cpu_reset_func_end cortex_a78_ae
 
@@ -124,6 +169,9 @@ func cortex_a78_ae_core_pwr_dwn
 	 * -------------------------------------------------------
 	 */
 	sysreg_bit_set CORTEX_A78_CPUPWRCTLR_EL1, CORTEX_A78_CPUPWRCTLR_EL1_CORE_PWRDN_EN_BIT
+
+	apply_erratum cortex_a78_ae, ERRATUM(2743093), ERRATA_A78_AE_2743093
+
 	isb
 	ret
 endfunc cortex_a78_ae_core_pwr_dwn

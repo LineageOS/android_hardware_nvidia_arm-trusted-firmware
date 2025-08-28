@@ -262,6 +262,12 @@ static unsigned int read_feat_mtpmu_id_field(void)
 
 }
 
+static unsigned int read_feat_fpmr_id_field(void)
+{
+	return ISOLATE_FIELD(read_id_aa64pfr2_el1(), ID_AA64PFR2_EL1_FPMR_SHIFT,
+			     ID_AA64PFR2_EL1_FPMR_MASK);
+}
+
 static unsigned int read_feat_the_id_field(void)
 {
 	return ISOLATE_FIELD(read_id_aa64pfr1_el1(), ID_AA64PFR1_EL1_THE_SHIFT,

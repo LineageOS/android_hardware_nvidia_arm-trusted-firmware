@@ -152,6 +152,18 @@ static int32_t tlkd_setup(void)
 	 */
 	bl31_register_bl32_init(&tlkd_init);
 
+	/* get a list of all S-EL1 IRQs from the platform */
+
+	/* register interrupt handler */
+	flags = 0;
+	set_interrupt_rm_flag(flags, NON_SECURE);
+	ret = register_interrupt_type_handler(INTR_TYPE_S_EL1,
+					      tlkd_interrupt_handler,
+					      flags);
+	if (ret != 0) {
+		ERROR("failed to register tlkd interrupt handler (%d)\n", ret);
+	}
+
 	return 0;
 }
 

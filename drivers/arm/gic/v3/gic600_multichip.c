@@ -131,6 +131,7 @@ static void set_gicd_chipr_n(uintptr_t base,
 						       spi_blocks);
 		break;
 	case IIDR_MODEL_ARM_GIC_700:
+	case IIDR_MODEL_ARM_GIC_700_AE:
 		/* Calculate the SPI_ID_MIN value for ESPI */
 		if (spi_id_min >= GIC700_ESPI_ID_MIN) {
 			spi_block_min = ESPI_BLOCK_MIN_VALUE(spi_id_min);
@@ -141,7 +142,12 @@ static void set_gicd_chipr_n(uintptr_t base,
 		}
 
 		/* Calculate the total number of blocks */
-		spi_blocks = SPI_BLOCKS_VALUE(spi_id_min, spi_id_max);
+		if ((spi_id_max <= GIC700_SPI_ID_MAX) || (spi_id_min >= GIC700_ESPI_ID_MIN)) {
+			spi_blocks = SPI_BLOCKS_VALUE(spi_id_min, spi_id_max);
+		} else {
+			spi_blocks = SPI_BLOCKS_VALUE(spi_id_min, GIC700_SPI_ID_MAX);
+			spi_blocks += SPI_BLOCKS_VALUE(GIC700_ESPI_ID_MIN, spi_id_max);
+		}
 
 		chipr_n_val = GICD_CHIPR_VALUE_GIC_700(chip_addr,
 						       spi_block_min,
@@ -258,16 +264,23 @@ static void gic700_multichip_validate_data(
 		spi_id_min = multichip_data->spi_ids[i].spi_id_min;
 		spi_id_max = multichip_data->spi_ids[i].spi_id_max;
 
-		if ((spi_id_min == 0U) || (spi_id_max == 0U)) {
-			continue;
-		}
-
-		/* MIN SPI ID check */
+		/* Validation checks for the min SPI's INTID */
 		if ((spi_id_min < GIC700_SPI_ID_MIN) ||
-		    ((spi_id_min >= GIC700_SPI_ID_MAX) &&
+		    (spi_id_min > GIC700_ESPI_ID_MAX) ||
+		    ((spi_id_min > GIC700_SPI_ID_MAX) &&
 		     (spi_id_min < GIC700_ESPI_ID_MIN))) {
 			ERROR("Invalid MIN SPI ID {%u} passed for "
 					"Chip %u\n", spi_id_min, i);
+			panic();
+		}
+
+		/* Validation checks for the max SPI's INTID */
+		if ((spi_id_max < GIC700_SPI_ID_MIN) ||
+		    (spi_id_max > GIC700_ESPI_ID_MAX) ||
+		    ((spi_id_max > GIC700_SPI_ID_MAX) &&
+		     (spi_id_max < GIC700_ESPI_ID_MIN))) {
+			ERROR("Invalid MAX SPI ID {%u} passed for "
+					"Chip %u\n", spi_id_max, i);
 			panic();
 		}
 
@@ -279,24 +292,6 @@ static void gic700_multichip_validate_data(
 			panic();
 		}
 
-		/* ESPI IDs range check */
-		if ((spi_id_min >= GIC700_ESPI_ID_MIN) &&
-		    (spi_id_max > GIC700_ESPI_ID_MAX)) {
-			ERROR("Invalid ESPI IDs {%u, %u} passed for "
-					"Chip %u\n", spi_id_min,
-					spi_id_max, i);
-			panic();
-
-		}
-
-		/* SPI IDs range check */
-		if (((spi_id_min < GIC700_SPI_ID_MAX) &&
-		     (spi_id_max > GIC700_SPI_ID_MAX))) {
-			ERROR("Invalid SPI IDs {%u, %u} passed for "
-					"Chip %u\n", spi_id_min,
-					spi_id_max, i);
-			panic();
-		}
 
 		/* SPI IDs overlap check */
 		if (spi_id_max < GIC700_SPI_ID_MAX) {
@@ -333,7 +328,8 @@ void gic600_multichip_init(struct gic600_multichip_data *multichip_data)
 		gic600_multichip_validate_data(multichip_data);
 	}
 
-	if ((gicd_iidr_val & IIDR_MODEL_MASK) == IIDR_MODEL_ARM_GIC_700) {
+	if (((gicd_iidr_val & IIDR_MODEL_MASK) == IIDR_MODEL_ARM_GIC_700) ||
+	    ((gicd_iidr_val & IIDR_MODEL_MASK) == IIDR_MODEL_ARM_GIC_700_AE)) {
 		gic700_multichip_validate_data(multichip_data);
 	}
 

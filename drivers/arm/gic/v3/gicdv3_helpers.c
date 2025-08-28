@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2015-2020, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -200,6 +201,21 @@ void gicd_write_isactiver(uintptr_t base, unsigned int id, unsigned int val)
 {
 	GICD_WRITE(ISACTIVE, base, id, val);
 }
+
+/*
+ * Accessors to read/write the GIC Distributor ICENABLER and ICENABLERE
+ * corresponding to the interrupt ID, 32 interrupt IDs at a time.
+ */
+unsigned int gicd_read_icenabler(uintptr_t base, unsigned int id)
+{
+	return GICD_READ(ICENABLE, base, id);
+}
+
+void gicd_write_icenabler(uintptr_t base, unsigned int id, unsigned int val)
+{
+	GICD_WRITE(ICENABLE, base, id, val);
+}
+
 
 /*
  * Accessors to read/write the GIC Distributor ISENABLER and ISENABLERE

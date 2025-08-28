@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019-2021, NVIDIA CORPORATION. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -44,7 +44,21 @@ void plat_memctrl_restore(void)
  ******************************************************************************/
 void plat_memctrl_setup(void)
 {
-	UNUSED_FUNC_NOP(); /* do nothing */
+	/*
+	 * All requests at boot time, and certain requests during
+	 * normal run time, are physically addressed and must bypass
+	 * the SMMU. The client hub logic implements a hardware bypass
+	 * path around the Translation Buffer Units (TBU). During
+	 * boot-time, the SMMU_BYPASS_CTRL register (which defaults to
+	 * TBU_BYPASS mode) will be used to steer all requests around
+	 * the uninitialized TBUs. During normal operation, this register
+	 * is locked into TBU_BYPASS_SID config, which routes requests
+	 * with special StreamID 0x7f on the bypass path and all others
+	 * through the selected TBU. This is done to disable SMMU Bypass
+	 * mode, as it could be used to circumvent SMMU security checks.
+	 */
+	tegra_mc_write_32(MC_SMMU_BYPASS_CONFIG,
+			  MC_SMMU_BYPASS_CONFIG_SETTINGS);
 }
 
 /*******************************************************************************

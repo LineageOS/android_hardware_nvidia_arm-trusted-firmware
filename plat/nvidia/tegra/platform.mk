@@ -1,6 +1,6 @@
 #
-# Copyright (c) 2015-2024, Arm Limited and Contributors. All rights reserved.
-# Copyright (c) 2020, NVIDIA Corporation. All rights reserved.
+# Copyright (c) 2015-2024, ARM Limited and Contributors. All rights reserved.
+# Copyright (c) 2020-2024, NVIDIA Corporation. All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
 #
@@ -46,20 +46,30 @@ ENABLE_TEGRA_WDT_LEGACY_FIQ_HANDLING	?= 0
 # Flag to allow relocation of BL32 image to TZDRAM during boot
 RELOCATE_BL32_IMAGE		?= 0
 
+# Do not trap accesses to Error System registers from EL1 or EL2.
+TEGRA_TRAP_LOWER_EL_ERR_ACCESS	?= 0
+
 # Enable stack protection
 ENABLE_STACK_PROTECTOR		:=	strong
 
 # Enable SDEI
 SDEI_SUPPORT			:= 1
 
+# Enable support for errata ABI
+ERRATA_ABI_SUPPORT		:= 1
+
+# Enable support for Tegra Memctrl driver
+ENABLE_TEGRA_MEMCTRL		:= 1
+
 # modify BUILD_PLAT to point to SoC specific build directory
 BUILD_PLAT	:=	${BUILD_BASE}/${PLAT}/${TARGET_SOC}/${BUILD_TYPE}
 
-include plat/nvidia/tegra/common/tegra_common.mk
 include ${SOC_DIR}/platform_${TARGET_SOC}.mk
 
 $(eval $(call add_define,ENABLE_TEGRA_WDT_LEGACY_FIQ_HANDLING))
 $(eval $(call add_define,RELOCATE_BL32_IMAGE))
+$(eval $(call add_define,TEGRA_TRAP_LOWER_EL_ERR_ACCESS))
+$(eval $(call add_define,ENABLE_TEGRA_MEMCTRL))
 
 # platform cflags (enable signed comparisons, disable stdlib)
 TF_CFLAGS	+= -nostdlib
@@ -75,8 +85,11 @@ override LIBC_SRCS :=	$(addprefix lib/libc/,		\
 			memset.c			\
 			printf.c			\
 			putchar.c			\
+			strncmp.c			\
 			strrchr.c			\
 			strlen.c			\
+			strlcpy.c			\
+			strncmp.c			\
 			snprintf.c)
 
 INCLUDES	+=	-Iinclude/lib/libc		\

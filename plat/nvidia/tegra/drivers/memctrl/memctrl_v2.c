@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2017, ARM Limited and Contributors. All rights reserved.
- * Copyright (c) 2019-2020, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2019-2023, NVIDIA Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -18,7 +18,6 @@
 #include <mce.h>
 #include <memctrl.h>
 #include <memctrl_v2.h>
-#include <smmu.h>
 #include <tegra_def.h>
 #include <tegra_platform.h>
 #include <tegra_private.h>
@@ -34,27 +33,8 @@ void tegra_memctrl_setup(void)
 {
 	INFO("Tegra Memory Controller (v2)\n");
 
-	/* Initialize the System memory management unit */
-	tegra_smmu_init();
-
 	/* allow platforms to program custom memory controller settings */
 	plat_memctrl_setup();
-
-	/*
-	 * All requests at boot time, and certain requests during
-	 * normal run time, are physically addressed and must bypass
-	 * the SMMU. The client hub logic implements a hardware bypass
-	 * path around the Translation Buffer Units (TBU). During
-	 * boot-time, the SMMU_BYPASS_CTRL register (which defaults to
-	 * TBU_BYPASS mode) will be used to steer all requests around
-	 * the uninitialized TBUs. During normal operation, this register
-	 * is locked into TBU_BYPASS_SID config, which routes requests
-	 * with special StreamID 0x7f on the bypass path and all others
-	 * through the selected TBU. This is done to disable SMMU Bypass
-	 * mode, as it could be used to circumvent SMMU security checks.
-	 */
-	tegra_mc_write_32(MC_SMMU_BYPASS_CONFIG,
-			  MC_SMMU_BYPASS_CONFIG_SETTINGS);
 }
 
 /*
@@ -80,11 +60,13 @@ void tegra_memctrl_restore_settings(void)
 		assert(tegra_mc_read_32(MC_VIDEO_PROTECT_SIZE_MB)
 			 == (uint32_t)video_mem_size_mb);
 
+#ifdef mce_update_gsc_videomem
 		/*
 		 * MCE propagates the VideoMem configuration values across the
 		 * CCPLEX.
 		 */
 		mce_update_gsc_videomem();
+#endif
 	}
 }
 
@@ -120,7 +102,7 @@ void tegra_mc_save_context(uint64_t mc_ctx_addr)
 {
 	uint32_t i, num_entries = 0;
 	mc_regs_t *mc_ctx_regs;
-	const plat_params_from_bl2_t *params_from_bl2 = bl31_get_plat_params();
+	const bl31_plat_params_t *params_from_bl2 = bl31_get_plat_params();
 	uint64_t tzdram_base = params_from_bl2->tzdram_base;
 	uint64_t tzdram_end = tzdram_base + params_from_bl2->tzdram_size;
 
@@ -323,12 +305,13 @@ void tegra_memctrl_videomem_setup(uint64_t phys_base, uint32_t size_in_bytes)
 	assert(tegra_mc_read_32(MC_VIDEO_PROTECT_SIZE_MB)
 		 == (size_in_bytes >> 20));
 
+#ifdef mce_update_gsc_videomem
 	/*
 	 * MCE propagates the VideoMem configuration values across the
 	 * CCPLEX.
 	 */
 	(void)mce_update_gsc_videomem();
-
+#endif
 	/* Clear the non-overlapping memory */
 	if (video_mem_base != 0U) {
 		tegra_clear_videomem_nonoverlap(phys_base, size_in_bytes);

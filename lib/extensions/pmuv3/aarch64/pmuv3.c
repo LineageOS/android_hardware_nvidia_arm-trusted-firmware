@@ -48,6 +48,23 @@ static u_register_t mtpmu_disable_el3(u_register_t mdcr_el3)
 	return mdcr_el3;
 }
 
+static u_register_t pmuv3_evcnt_access_disable(u_register_t mdcr_el3)
+{
+	if (!is_feat_rme_present()) {
+		return mdcr_el3;
+	}
+
+	/*
+	 * Disallow Secure/Non-Secure access for PMU counters via external
+	 * debugger
+	 */
+
+	mdcr_el3 |= MDCR_EPMAD_BIT;
+	mdcr_el3 &= ~MDCR_EPMADE_BIT;
+
+	return mdcr_el3;
+}
+
 void pmuv3_init_el3(void)
 {
 	u_register_t mdcr_el3 = read_mdcr_el3();
@@ -89,6 +106,7 @@ void pmuv3_init_el3(void)
 	mdcr_el3 = (mdcr_el3 | MDCR_SCCD_BIT | MDCR_MCCD_BIT) &
 		  ~(MDCR_MPMX_BIT | MDCR_SPME_BIT | MDCR_TPM_BIT);
 	mdcr_el3 = mtpmu_disable_el3(mdcr_el3);
+	mdcr_el3 = pmuv3_evcnt_access_disable(mdcr_el3);
 	write_mdcr_el3(mdcr_el3);
 
 	/* ---------------------------------------------------------------------

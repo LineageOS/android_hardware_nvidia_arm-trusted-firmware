@@ -134,11 +134,6 @@ else
 	target32-directive	= 	-target armv8a-none-eabi
 endif #(ARM_ARCH_MAJOR)
 
-################################################################################
-# Get Architecture Feature Modifiers
-################################################################################
-arch-features		=	${ARM_ARCH_FEATURE}
-
 ifneq ($(filter %-clang,$($(ARCH)-cc-id)),)
 	ifeq ($($(ARCH)-cc-id),arm-clang)
 		TF_CFLAGS_aarch32	:=	-target arm-arm-none-eabi
@@ -569,9 +564,22 @@ include ${PLAT_MAKEFILE_FULL}
 ################################################################################
 include ${MAKE_HELPERS_DIRECTORY}arch_features.mk
 
+################################################################################
+# Get Architecture Feature Modifiers
+################################################################################
+arch-features		=	${ARM_ARCH_FEATURE}
+
 ####################################################
 # Enable required options for Memory Stack Tagging.
 ####################################################
+
+# Memory tagging is supported in architecture Armv8.5-A AArch64 and onwards
+ifeq ($(ARCH), aarch64)
+	# Check if revision is greater than or equal to 8.5
+	ifeq "8.5" "$(word 1, $(sort 8.5 $(ARM_ARCH_MAJOR).$(ARM_ARCH_MINOR)))"
+		mem_tag_arch_support	= 	yes
+	endif
+endif #(ARCH=aarch64)
 
 # Currently, these options are enabled only for clang and armclang compiler.
 ifeq (${SUPPORT_STACK_MEMTAG},yes)
@@ -593,6 +601,15 @@ ifeq (${SUPPORT_STACK_MEMTAG},yes)
         architecture ${ARCH},armv${ARM_ARCH_MAJOR}.${ARM_ARCH_MINOR}-a")
 	endif #(mem_tag_arch_support)
 endif #(SUPPORT_STACK_MEMTAG)
+
+# Set the compiler's architecture feature modifiers
+ifneq ($(arch-features), none)
+	# Strip "none+" from arch-features
+	arch-features	:=	$(subst none+,,$(arch-features))
+	march-directive	:=	$(march-directive)+$(arch-features)
+# Print features
+        $(info Arm Architecture Features specified: $(subst +, ,$(arch-features)))
+endif #(arch-features)
 
 ################################################################################
 # RME dependent flags configuration, Enable optional features for RME.
@@ -951,7 +968,20 @@ ifeq (${ARCH},aarch32)
 	ifeq (${ENABLE_FEAT_RNG_TRAP},1)
                 $(error "ENABLE_FEAT_RNG_TRAP cannot be used with ARCH=aarch32")
 	endif
+
+	ifneq (${ENABLE_FEAT_FPMR},0)
+                $(error "ENABLE_FEAT_FPMR cannot be used with ARCH=aarch32")
+	endif
 endif #(ARCH=aarch32)
+
+ifneq (${ENABLE_FEAT_FPMR},0)
+	ifeq (${ENABLE_FEAT_FGT},0)
+                $(error "ENABLE_FEAT_FPMR requires ENABLE_FEAT_FGT")
+	endif
+	ifeq (${ENABLE_FEAT_HCX},0)
+                $(error "ENABLE_FEAT_FPMR requires ENABLE_FEAT_HCX")
+	endif
+endif #(ENABLE_FEAT_FPMR)
 
 ifneq (${ENABLE_SME_FOR_NS},0)
 	ifeq (${ENABLE_SVE_FOR_NS},0)
@@ -1258,6 +1288,7 @@ $(eval $(call assert_numerics,\
 	ENABLE_FEAT_DIT \
 	ENABLE_FEAT_ECV \
 	ENABLE_FEAT_FGT \
+	ENABLE_FEAT_FPMR \
 	ENABLE_FEAT_FGT2 \
 	ENABLE_FEAT_HCX \
 	ENABLE_FEAT_LS64_ACCDATA \
@@ -1419,6 +1450,7 @@ $(eval $(call add_defines,\
 	ENABLE_MPMM \
 	ENABLE_MPMM_FCONF \
 	ENABLE_FEAT_FGT \
+	ENABLE_FEAT_FPMR \
 	ENABLE_FEAT_FGT2 \
 	ENABLE_FEAT_ECV \
 	ENABLE_FEAT_AMUv1p1 \

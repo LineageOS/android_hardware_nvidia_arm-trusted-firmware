@@ -26,6 +26,7 @@
 #include <lib/el3_runtime/pubsub_events.h>
 #include <lib/extensions/amu.h>
 #include <lib/extensions/brbe.h>
+#include <lib/extensions/fpmr.h>
 #include <lib/extensions/debug_v8p9.h>
 #include <lib/extensions/fgt2.h>
 #include <lib/extensions/mpam.h>
@@ -268,6 +269,13 @@ static void setup_ns_context(cpu_context_t *ctx, const struct entry_point_info *
 	 */
 	scr_el3 |= get_scr_el3_from_routing_model(NON_SECURE);
 #endif
+
+	if (is_feat_fpmr_supported()) {
+		/* Set the EnFPM bit in SCR_EL3 to enable access to FPMR
+		 * register.
+		 */
+		scr_el3 |= SCR_EnFPM_BIT;
+	}
 
 	if (is_feat_the_supported()) {
 		/* Set the RCWMASKEn bit in SCR_EL3 to enable access to
@@ -693,8 +701,6 @@ void cm_el3_arch_init_per_world(per_world_context_t *per_world_ctx)
 #if IMAGE_BL31
 void manage_extensions_nonsecure_per_world(void)
 {
-	cm_el3_arch_init_per_world(&per_world_context[CPU_CONTEXT_NS]);
-
 	if (is_feat_sme_supported()) {
 		sme_enable_per_world(&per_world_context[CPU_CONTEXT_NS]);
 	}
@@ -709,6 +715,10 @@ void manage_extensions_nonsecure_per_world(void)
 
 	if (is_feat_sys_reg_trace_supported()) {
 		sys_reg_trace_enable_per_world(&per_world_context[CPU_CONTEXT_NS]);
+	}
+
+	if (is_feat_fpmr_supported()) {
+		fpmr_enable_per_world(&per_world_context[CPU_CONTEXT_NS]);
 	}
 
 	if (is_feat_mpam_supported()) {

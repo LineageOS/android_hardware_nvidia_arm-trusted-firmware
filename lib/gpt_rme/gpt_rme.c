@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2022-2024, Arm Limited. All rights reserved.
+ * Copyright (c) 2025, NVIDIA Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -19,6 +20,8 @@
 #include <lib/smccc.h>
 #include <lib/spinlock.h>
 #include <lib/xlat_tables/xlat_tables_v2.h>
+
+#include <plat/common/common_def.h>
 
 #if !ENABLE_RME
 #error "ENABLE_RME must be enabled to use the GPT library"

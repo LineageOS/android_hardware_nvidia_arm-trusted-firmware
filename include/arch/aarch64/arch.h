@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2024, Arm Limited and Contributors. All rights reserved.
- * Copyright (c) 2020-2022, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2020-2023, NVIDIA Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -465,6 +465,11 @@
 #define ID_AA64PFR2_EL1_MTEFAR_SHIFT		U(8)
 #define ID_AA64PFR2_EL1_MTEFAR_MASK		ULL(0xf)
 
+#define ID_AA64PFR2_EL1_FPMR_SHIFT		U(32)
+#define ID_AA64PFR2_EL1_FPMR_MASK		ULL(0xf)
+
+#define FPMR_IMPLEMENTED			ULL(0x1)
+
 #define VDISR_EL2				S3_4_C12_C1_1
 #define VSESR_EL2				S3_4_C5_C2_3
 
@@ -605,6 +610,7 @@
 #define SCR_NSE_SHIFT		U(62)
 #define SCR_FGTEN2_BIT		(UL(1) << 59)
 #define SCR_NSE_BIT		(ULL(1) << SCR_NSE_SHIFT)
+#define SCR_EnFPM_BIT		(ULL(1) << 50)
 #define SCR_GPF_BIT		(UL(1) << 48)
 #define SCR_D128En_BIT		(UL(1) << 47)
 #define SCR_TWEDEL_SHIFT	U(30)
@@ -625,7 +631,8 @@
 #define SCR_TWEDEn_BIT		(UL(1) << 29)
 #define SCR_ECVEN_BIT		(UL(1) << 28)
 #define SCR_FGTEN_BIT		(UL(1) << 27)
-#define SCR_ATA_BIT		(UL(1) << 26)
+#define SCR_ATA_SHIFT		U(26)
+#define SCR_ATA_BIT		(UL(1) << SCR_ATA_SHIFT)
 #define SCR_EnSCXT_BIT		(UL(1) << 25)
 #define SCR_FIEN_BIT		(UL(1) << 21)
 #define SCR_EEL2_BIT		(UL(1) << 18)
@@ -677,6 +684,7 @@
 #define MDCR_TDOSA_BIT		(ULL(1) << 10)
 #define MDCR_TDA_BIT		(ULL(1) << 9)
 #define MDCR_TPM_BIT		(ULL(1) << 6)
+#define MDCR_EPMADE_BIT		(ULL(1) << 2)
 #define MDCR_EL3_RESET_VAL	MDCR_MTPME_BIT
 
 /* MDCR_EL2 definitions */
@@ -1304,6 +1312,7 @@
 /* MPAM register definitions */
 #define MPAM3_EL3_MPAMEN_BIT		(ULL(1) << 63)
 #define MPAM3_EL3_TRAPLOWER_BIT		(ULL(1) << 62)
+#define MPAM3_EL3_SDEFLT_BIT		(ULL(1) << 61)
 #define MPAMHCR_EL2_TRAP_MPAMIDR_EL1	(ULL(1) << 31)
 #define MPAM3_EL3_RESET_VAL		MPAM3_EL3_TRAPLOWER_BIT
 
@@ -1388,13 +1397,19 @@
 #define ERXPFGCDN_EL1		S3_0_C5_C4_6
 #define ERXMISC0_EL1		S3_0_C5_C5_0
 #define ERXMISC1_EL1		S3_0_C5_C5_1
+#define ERXMISC2_EL1		S3_0_C5_C5_2
+#define ERXMISC3_EL1		S3_0_C5_C5_3
 
 #define ERXCTLR_ED_SHIFT	U(0)
 #define ERXCTLR_ED_BIT		(U(1) << ERXCTLR_ED_SHIFT)
+#define ERXCTLR_UI_BIT		(U(1) << 2)
 #define ERXCTLR_UE_BIT		(U(1) << 4)
+#define ERXCTLR_CFI_BIT		(U(1) << 8)
 
 #define ERXPFGCTL_UC_BIT	(U(1) << 1)
 #define ERXPFGCTL_UEU_BIT	(U(1) << 2)
+#define ERXPFGCTL_CE_MASK	ULL(0x3)
+#define ERXPFGCTL_CE_SHIFT	U(6)
 #define ERXPFGCTL_CDEN_BIT	(U(1) << 31)
 
 /*******************************************************************************
@@ -1520,13 +1535,23 @@
 /*******************************************************************************
  * Definitions for DynamicIQ Shared Unit registers
  ******************************************************************************/
+#define CLUSTERECTLR_EL1	S3_0_C15_C3_4
 #define CLUSTERPWRDN_EL1	S3_0_c15_c3_6
+
+/*******************************************************************************
+ * FEAT_FPMR - Floating point Mode Register
+ ******************************************************************************/
+#define FPMR			S3_3_C4_C4_2
 
 /* CLUSTERPWRDN_EL1 register definitions */
 #define DSU_CLUSTER_PWR_OFF	0
 #define DSU_CLUSTER_PWR_ON	1
 #define DSU_CLUSTER_PWR_MASK	U(1)
 #define DSU_CLUSTER_MEM_RET	BIT(1)
+
+/* CLUSTERECTLR_EL1 register definitions */
+#define DSU_NC_CTRL_BIT		BIT(0)
+#define DSU_WRITEEVICT_BIT	BIT(14)
 
 /*******************************************************************************
  * Definitions for CPU Power/Performance Management registers
@@ -1540,9 +1565,30 @@
 #define CPUMPMMCR_EL3_MPMM_EN_SHIFT	UINT64_C(0)
 #define CPUMPMMCR_EL3_MPMM_EN_MASK	UINT64_C(0x1)
 
+/*******************************************************************************
+ * Definitions for Pointer Authentication controls Unit registers
+ ******************************************************************************/
+#define CPUPSELR_EL3		S3_6_c15_c8_0
+#define CPUPCR_EL3		S3_6_c15_c8_1
+#define CPUPOR_EL3		S3_6_c15_c8_2
+#define CPUPMR_EL3		S3_6_c15_c8_3
+
 /* alternative system register encoding for the "sb" speculation barrier */
 #define SYSREG_SB			S0_3_C3_C0_7
 
+/*******************************************************************************
+ * Definitions for Generic Timer registers
+ ******************************************************************************/
+#define CNTHPS_CTL_EL2		S3_4_C14_C5_1
+#define CNTHPS_CVAL_EL2		S3_4_C14_C5_2
+#define CNTHV_CTL_EL2		S3_4_C14_C3_1
+#define CNTHV_CVAL_EL2		S3_4_C14_C3_2
+#define CNTHVS_CTL_EL2		S3_4_C14_C4_1
+#define CNTHVS_CVAL_EL2		S3_4_C14_C4_2
+
+/*******************************************************************************
+ * Definitions for Cluster Power Management registers
+ ******************************************************************************/
 #define CLUSTERPMCR_EL1			S3_0_C15_C5_0
 #define CLUSTERPMCNTENSET_EL1		S3_0_C15_C5_1
 #define CLUSTERPMCCNTR_EL1		S3_0_C15_C6_0

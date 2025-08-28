@@ -24,6 +24,12 @@ REGISTER_PUBSUB_EVENT(psci_cpu_on_finish);
 REGISTER_PUBSUB_EVENT(psci_suspend_pwrdown_start);
 REGISTER_PUBSUB_EVENT(psci_suspend_pwrdown_finish);
 
+/*
+ * Event published after a CPU has completed its warmboot functionality
+ * and is ready to boot into the NS world.
+ */
+REGISTER_PUBSUB_EVENT(psci_cpu_warmboot_finish);
+
 #ifdef __aarch64__
 /*
  * These events are published by the AArch64 context management framework

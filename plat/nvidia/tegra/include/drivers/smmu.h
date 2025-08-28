@@ -32,11 +32,9 @@
 #define SMMU_CBn_ACTLR_CPRE_BIT			(1ULL << 1U)
 
 /* SMMU IDs currently supported by the driver */
-enum {
-	TEGRA_SMMU0 = 0U,
-	TEGRA_SMMU1 = 1U,
-	TEGRA_SMMU2 = 2U
-};
+#define TEGRA_SMMU0				0U
+#define TEGRA_SMMU1				1U
+#define TEGRA_SMMU2				2U
 
 static inline uint32_t tegra_smmu_read_32(uint32_t smmu_id, uint32_t off)
 {

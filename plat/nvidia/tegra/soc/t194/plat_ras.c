@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2021, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2020-2023, NVIDIA Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -385,7 +385,6 @@ static int32_t tegra194_ras_record_handler(const struct err_record_info *info,
 			errors, status);
 }
 
-
 /* Instantiate RAS nodes */
 PER_CORE_RAS_NODE_LIST(DEFINE_ONE_RAS_NODE)
 PER_CLUSTER_RAS_NODE_LIST(DEFINE_ONE_RAS_NODE)
@@ -490,3 +489,14 @@ void plat_ea_handler(unsigned int ea_reason, uint64_t syndrome, void *cookie,
 	plat_default_ea_handler(ea_reason, syndrome, cookie, handle, flags);
 #endif
 }
+
+#ifdef ENABLE_FEAT_RAS
+/*
+ * This function dumps core RAS records from the previous boot. This is a
+ * required interface.
+ */
+void tegra_ras_dump_core_records(void)
+{
+	; /* do nothing */
+}
+#endif

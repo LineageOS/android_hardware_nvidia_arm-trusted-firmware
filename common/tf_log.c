@@ -8,11 +8,25 @@
 #include <assert.h>
 #include <stdio.h>
 
+#include <arch.h>
+#include <arch_helpers.h>
+#include <lib/spinlock.h>
 #include <common/debug.h>
 #include <plat/common/platform.h>
 
+
+
 /* Set the default maximum log level to the `LOG_LEVEL` build flag */
 static unsigned int max_log_level = LOG_LEVEL;
+
+/* Add spinlock variable */
+static spinlock_t log_lock;
+
+/* Helper function to check if MMU is enabled */
+static inline bool is_mmu_enabled(void)
+{
+	return (read_sctlr_el3() & SCTLR_M_BIT) != 0;
+}
 
 /*
  * The common log function which is invoked by TF-A code.
@@ -26,6 +40,7 @@ void tf_log(const char *fmt, ...)
 	unsigned int log_level;
 	va_list args;
 	const char *prefix_str;
+	bool mmu_enabled = is_mmu_enabled();
 
 	/* We expect the LOG_MARKER_* macro as the first character */
 	log_level = fmt[0];
@@ -37,6 +52,11 @@ void tf_log(const char *fmt, ...)
 	if (log_level > max_log_level)
 		return;
 
+	/* Acquire the log lock only if MMU is enabled */
+	if (mmu_enabled) {
+		spin_lock(&log_lock);
+	}
+
 	prefix_str = plat_log_get_prefix(log_level);
 
 	while (*prefix_str != '\0') {
@@ -47,11 +67,17 @@ void tf_log(const char *fmt, ...)
 	va_start(args, fmt);
 	(void)vprintf(fmt + 1, args);
 	va_end(args);
+
+	/* Release the log lock only if MMU is enabled */
+	if (mmu_enabled) {
+		spin_unlock(&log_lock);
+	}
 }
 
 void tf_log_newline(const char log_fmt[2])
 {
 	unsigned int log_level = log_fmt[0];
+	bool mmu_enabled = is_mmu_enabled();
 
 	/* Verify that log_level is one of LOG_MARKER_* macro defined in debug.h */
 	assert((log_level > 0U) && (log_level <= LOG_LEVEL_VERBOSE));
@@ -60,7 +86,17 @@ void tf_log_newline(const char log_fmt[2])
 	if (log_level > max_log_level)
 		return;
 
+	/* Acquire the log lock only if MMU is enabled */
+	if (mmu_enabled) {
+		spin_lock(&log_lock);
+	}
+
 	putchar('\n');
+
+	/* Release the log lock only if MMU is enabled */
+	if (mmu_enabled) {
+		spin_unlock(&log_lock);
+	}
 }
 
 /*

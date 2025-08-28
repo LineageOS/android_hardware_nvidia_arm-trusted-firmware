@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019-2023, NVIDIA CORPORATION. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -115,7 +115,7 @@ int32_t tegra_soc_pwr_domain_suspend(const psci_power_state_t *target_state)
 {
 	const plat_local_state_t *pwr_domain_state;
 	uint8_t stateid_afflvl2;
-	plat_params_from_bl2_t *params_from_bl2 = bl31_get_plat_params();
+	bl31_plat_params_t *params_from_bl2 = bl31_get_plat_params();
 	uint64_t mc_ctx_base;
 	uint32_t val;
 	mce_cstate_info_t sc7_cstate_info = {
@@ -264,7 +264,7 @@ int32_t tegra_soc_pwr_domain_power_down_wfi(const psci_power_state_t *target_sta
 {
 	const plat_local_state_t *pwr_domain_state =
 		target_state->pwr_domain_state;
-	plat_params_from_bl2_t *params_from_bl2 = bl31_get_plat_params();
+	bl31_plat_params_t *params_from_bl2 = bl31_get_plat_params();
 	uint8_t stateid_afflvl2 = pwr_domain_state[PLAT_MAX_PWR_LVL] &
 		TEGRA194_STATE_ID_MASK;
 	uint64_t src_len_in_bytes = (uintptr_t)&__BL31_END__ - (uintptr_t)BL31_BASE;
@@ -276,7 +276,7 @@ int32_t tegra_soc_pwr_domain_power_down_wfi(const psci_power_state_t *target_sta
 		      tegra194_get_cpu_reset_handler_size();
 
 		/* initialise communication channel with BPMP */
-		ret = tegra_bpmp_ipc_init();
+		ret = tegra_bpmp_ipc_init(1U);
 		assert(ret == 0);
 
 		/* Enable SE clock before SE context save */
@@ -335,6 +335,7 @@ int32_t tegra_soc_pwr_domain_on(u_register_t mpidr)
 
 	ret = mce_command_handler((uint64_t)MCE_CMD_ONLINE_CORE, target_cpu, 0U, 0U);
 	if (ret < 0) {
+		ERROR("%s: CPU 0x%lx power ON failed (%d)\n", __func__, mpidr, ret);
 		return PSCI_E_DENIED;
 	}
 
@@ -343,11 +344,13 @@ int32_t tegra_soc_pwr_domain_on(u_register_t mpidr)
 
 int32_t tegra_soc_pwr_domain_on_finish(const psci_power_state_t *target_state)
 {
-	const plat_params_from_bl2_t *params_from_bl2 = bl31_get_plat_params();
+	const bl31_plat_params_t *params_from_bl2 = bl31_get_plat_params();
 	uint8_t enable_ccplex_lock_step = params_from_bl2->enable_ccplex_lock_step;
 	uint8_t stateid_afflvl2 = target_state->pwr_domain_state[PLAT_MAX_PWR_LVL];
 	cpu_context_t *ctx = cm_get_context(NON_SECURE);
 	uint64_t actlr_elx;
+
+	NOTICE("%s: Powering on CPU 0x%lx\n", __func__, read_mpidr());
 
 	/*
 	 * Reset power state info for CPUs when onlining, we set
@@ -460,6 +463,30 @@ int32_t tegra_soc_pwr_domain_on_finish(const psci_power_state_t *target_state)
 		write_actlr_el1(actlr_elx);
 	}
 
+#if TEGRA_TRAP_LOWER_EL_ERR_ACCESS
+	/*
+	 * SCR_EL3.TERR: Error register(ER*_EL1) accesses from EL1 or EL2
+	 * generate a Trap exception to EL3.
+	 */
+	scr_el3 = (uint32_t)read_scr();
+	scr_el3 |= SCR_TERR_BIT;
+	write_scr(scr_el3);
+#endif
+
+#if ENABLE_TEGRA_PERFMON
+	/*
+	 * Enable Uncore Perfmon counters to aid in debugging.
+	 *
+	 * When set, events are allowed to be counted in the NVIDIA-specific
+	 * Performance Monitors extension.
+	 */
+	actlr_elx = read_actlr_el3();
+	actlr_elx |= DENVER_CPU_ENABLE_SPME;
+	write_actlr_el3(actlr_elx);
+#endif
+
+	NOTICE("%s: finish\n", __func__);
+
 	return PSCI_E_SUCCESS;
 }
 
@@ -489,6 +516,12 @@ int32_t tegra_soc_pwr_domain_off(const psci_power_state_t *target_state)
 	ret = mce_command_handler((uint64_t)MCE_CMD_ENTER_CSTATE,
 			(uint64_t)TEGRA_NVG_CORE_C7, MCE_CORE_SLEEP_TIME_INFINITE, 0U);
 	assert(ret == 0);
+
+	/* disable GICC */
+	tegra_gic_cpuif_deactivate();
+
+	/* disable rdistif */
+	tegra_gic_rdistif_off();
 
 	return PSCI_E_SUCCESS;
 }

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2022, Arm Limited and Contributors. All rights reserved.
- * Copyright (c) 2020, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2020-2023, NVIDIA Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -30,6 +30,8 @@
 #define PWRR_RDAG_SHIFT			1
 #define PWRR_RDGPD_SHIFT		2
 #define PWRR_RDGPO_SHIFT		3
+#define PWRR_RDGO_SHIFT			8
+#define PWRR_RDGO_MASK			(0xFFU << PWRR_RDGO_SHIFT)
 
 #define PWRR_RDPD			(1U << PWRR_RDPD_SHIFT)
 #define PWRR_RDAG			(1U << PWRR_RDAG_SHIFT)
@@ -43,6 +45,7 @@
 #define PWRR_ON				(0U << PWRR_RDPD_SHIFT)
 #define PWRR_OFF			(1U << PWRR_RDPD_SHIFT)
 
+static bool gic600_errata_wa_1717652 __unused;
 static bool gic600_errata_wa_2384374 __unused;
 
 #if GICV3_SUPPORT_GIC600
@@ -129,7 +132,8 @@ static bool gicv3_redists_need_power_mgmt(uintptr_t gicr_base)
 	 */
 	return (((reg & IIDR_MODEL_MASK) == IIDR_MODEL_ARM_GIC_600) ||
 		((reg & IIDR_MODEL_MASK) == IIDR_MODEL_ARM_GIC_600AE) ||
-		((reg & IIDR_MODEL_MASK) == IIDR_MODEL_ARM_GIC_700));
+		((reg & IIDR_MODEL_MASK) == IIDR_MODEL_ARM_GIC_700) ||
+		((reg & IIDR_MODEL_MASK) == IIDR_MODEL_ARM_GIC_700_AE));
 }
 
 #endif	/* GICV3_SUPPORT_GIC600 */
@@ -173,6 +177,27 @@ void gicv3_rdistif_on(unsigned int proc_num)
 	}
 #endif
 }
+
+#if GIC600_ERRATA_WA_1717652
+/******************************************************************************
+ * Helper functions for ERRATA 1717652
+ * https://developer.arm.com/documentation/sden892601/latest/
+ *****************************************************************************/
+uint32_t gicv3_rdistif_pwrr_get_rdgo(unsigned int proc_num)
+{
+	return ((gicr_read_pwrr(gicv3_driver_data->rdistif_base_addrs[proc_num])
+			& PWRR_RDGO_MASK) >> PWRR_RDGO_SHIFT);
+}
+
+bool gicv3_is_errata_wa_1717652_ready(unsigned int proc_num)
+{
+	uintptr_t base = get_gicr_base(proc_num);
+
+	return (gic600_errata_wa_1717652 &&
+		((gicr_read_ispendr(base, 0) & gicr_read_isenabler(base, 0)) != 0) &&
+		gicr_read_isactiver(base, 0) == 0);
+}
+#endif
 
 #if GIC600_ERRATA_WA_2384374
 /*******************************************************************************
@@ -229,4 +254,21 @@ void gicv3_check_erratas_applies(uintptr_t gicd_base)
 				"GIC600/GIC600AE errata workaround 2384374");
 		}
 	}
+
+#if GIC600_ERRATA_WA_1717652
+	if (gic_prod_id == GIC_PRODUCT_ID_GIC600) {
+		if ((gic_rev == GIC_REV(GIC_VARIANT_R0, GIC_REV_P2)) ||
+		    (gic_rev == GIC_REV(GIC_VARIANT_R0, GIC_REV_P3)) ||
+		    ((gic_rev >= GIC_REV(GIC_VARIANT_R1, GIC_REV_P2)) &&
+		    (gic_rev <= GIC_REV(GIC_VARIANT_R1, GIC_REV_P6)))) {
+			gic600_errata_wa_1717652 = true;
+			VERBOSE("%s applies\n",
+				"GIC600 errata workaround 1717652");
+		} else {
+			gic600_errata_wa_1717652 = false;
+			WARN("%s missing\n",
+				"GIC600 errata workaround 1717652");
+		}
+	}
+#endif
 }

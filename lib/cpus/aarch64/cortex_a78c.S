@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2021-2024, Arm Limited. All rights reserved.
+ * Copyright (c) 2023-2024, NVIDIA CORPORATION. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -106,7 +107,17 @@ workaround_reset_end cortex_a78c, ERRATUM(2779484)
 
 check_erratum_range cortex_a78c, ERRATUM(2779484), CPU_REV(0, 1), CPU_REV(0, 2)
 
-check_erratum_chosen cortex_a78c, CVE(2022, 23960), WORKAROUND_CVE_2022_23960
+workaround_reset_start cortex_a78c, ERRATUM(2855381), ERRATA_A78C_2855381
+	sysreg_bit_set CORTEX_A78C_ACTLR5_EL1, CORTEX_A78C_ACTLR5_EL1_BIT_39
+workaround_reset_end cortex_a78c, ERRATUM(2855381)
+
+check_erratum_ls cortex_a78c, ERRATUM(2855381), CPU_REV(0, 1)
+
+workaround_reset_start cortex_a78c, ERRATUM(3604888), ERRATA_A78C_3604888
+	sysreg_bit_set CORTEX_A78C_CPUACTLR3_EL1, CORTEX_A78C_CPUACTL3_EL1_BIT_58
+workaround_reset_end cortex_a78c, ERRATUM(3604888)
+
+check_erratum_range cortex_a78c, ERRATUM(3604888), CPU_REV(0, 0), CPU_REV(0, 2)
 
 workaround_reset_start cortex_a78c, CVE(2022, 23960), WORKAROUND_CVE_2022_23960
 #if IMAGE_BL31
@@ -117,6 +128,14 @@ workaround_reset_start cortex_a78c, CVE(2022, 23960), WORKAROUND_CVE_2022_23960
 	override_vector_table wa_cve_vbar_cortex_a78c
 #endif /* IMAGE_BL31 */
 workaround_reset_end cortex_a78c, CVE(2022, 23960)
+
+check_erratum_chosen cortex_a78c, CVE(2022, 23960), WORKAROUND_CVE_2022_23960
+
+workaround_reset_start cortex_a78c, CVE(2024, 5660), WORKAROUND_CVE_2024_5660
+	sysreg_bit_set CORTEX_A78C_CPUECTLR_EL1, CORTEX_A78C_CPUECTLR_EL1_BIT_46
+workaround_reset_end cortex_a78c, CVE(2024, 5660)
+
+check_erratum_chosen cortex_a78c, CVE(2024, 5660), WORKAROUND_CVE_2024_5660
 
 cpu_reset_func_start cortex_a78c
 cpu_reset_func_end cortex_a78c

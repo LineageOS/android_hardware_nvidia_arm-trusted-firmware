@@ -109,7 +109,7 @@ Preparing the BL31 image to run on Tegra SoCs
     TARGET_SOC=<target-soc e.g. t194|t186|t210> SPD=<dispatcher e.g. trusty|tlkd>
     bl31
 
-Platforms wanting to use different TZDRAM\_BASE, can add ``TZDRAM_BASE=<value>``
+Platforms wanting to use different BL31\_BASE, can add ``PLAT_BL31_BASE=<value>``
 to the build command line.
 
 The Tegra platform code expects a pointer to the following platform specific

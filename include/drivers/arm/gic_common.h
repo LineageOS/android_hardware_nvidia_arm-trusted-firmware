@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2015-2020, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2021, NVIDIA Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -45,6 +46,7 @@
 #define GICD_CTLR		U(0x0)
 #define GICD_TYPER		U(0x4)
 #define GICD_IIDR		U(0x8)
+#define GICD_SAC		U(0x24)
 #define GICD_IGROUPR		U(0x80)
 #define GICD_ISENABLER		U(0x100)
 #define GICD_ICENABLER		U(0x180)
@@ -60,6 +62,10 @@
 #define CTLR_ENABLE_G0_SHIFT		0
 #define CTLR_ENABLE_G0_MASK		U(0x1)
 #define CTLR_ENABLE_G0_BIT		BIT_32(CTLR_ENABLE_G0_SHIFT)
+
+/* GICD_SAC bit definitions */
+#define SAC_GICTNS			BIT(1)
+#define SAC_GICPNS			BIT(2)
 
 /*******************************************************************************
  * Common GIC Distributor interface register constants

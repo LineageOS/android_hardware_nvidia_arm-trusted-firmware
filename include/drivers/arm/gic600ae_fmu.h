@@ -43,6 +43,7 @@
 #define FMU_BLK_GICD		U(0)
 #define FMU_BLK_SPICOL		U(1)
 #define FMU_BLK_WAKERQ		U(2)
+#define FMU_BLK_RSVD		U(3)
 #define FMU_BLK_ITS0		U(4)
 #define FMU_BLK_ITS1		U(5)
 #define FMU_BLK_ITS2		U(6)

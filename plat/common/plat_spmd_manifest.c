@@ -118,7 +118,7 @@ int plat_spm_core_manifest_load(spmc_manifest_attribute_t *manifest,
 {
 	int rc, unmap_ret;
 	uintptr_t pm_base, pm_base_align;
-	size_t mapped_size;
+	size_t mapped_size, manifest_size;
 
 	assert(manifest != NULL);
 	assert(pm_addr != NULL);
@@ -162,11 +162,31 @@ int plat_spm_core_manifest_load(spmc_manifest_attribute_t *manifest,
 		goto exit_unmap;
 	}
 
-	/* Check SPMC manifest fits within the upper mapped page boundary */
-	if (mapped_size < fdt_totalsize(pm_addr)) {
-		ERROR("SPM Core manifest too large.\n");
-		rc = -EINVAL;
-		goto exit_unmap;
+	manifest_size = fdt_totalsize(pm_addr);
+
+	/* Map more memory for larger manifest */
+	if (manifest_size > mapped_size) {
+		/* unmap the smaller sized manifest */
+		rc = mmap_remove_dynamic_region(pm_base_align, mapped_size);
+		if (rc != 0) {
+			ERROR("Error while unmapping previous SPM Core manifest (%d).\n",
+				rc);
+			return rc;
+		}
+
+		/* align size to multiple of PAGE_SIZE */
+		mapped_size = page_align(manifest_size, UP);
+
+		/* map the manifest with a larger size */
+		rc = mmap_add_dynamic_region(
+				(unsigned long long)pm_base_align,
+				pm_base_align,
+				mapped_size,
+				MT_RO_DATA);
+		if (rc != 0) {
+			ERROR("Error while mapping larger SPM Core manifest (%d).\n", rc);
+			return rc;
+		}
 	}
 
 	VERBOSE("Reading SPM Core manifest at address %p\n", pm_addr);
@@ -181,7 +201,7 @@ int plat_spm_core_manifest_load(spmc_manifest_attribute_t *manifest,
 	rc = manifest_parse_root(manifest, pm_addr, rc);
 
 exit_unmap:
-	unmap_ret = mmap_remove_dynamic_region(pm_base_align, PAGE_SIZE);
+	unmap_ret = mmap_remove_dynamic_region(pm_base_align, mapped_size);
 	if (unmap_ret != 0) {
 		ERROR("Error while unmapping SPM Core manifest (%d).\n",
 			unmap_ret);

@@ -25,6 +25,34 @@
 #define CORTEX_A76_CPUECTLR_EL1_BIT_51				(ULL(1) << 51)
 
 /*******************************************************************************
+ * Definitions for CORTEX_A76_CPUECTLR_EL1 register related to Write-streaming.
+ ******************************************************************************/
+#define WS_THR_L2_256B		(U(0) << 24)
+#define WS_THR_L2_4KB		(U(1) << 24)
+#define WS_THR_L2_8KB		(U(2) << 24)
+#define WS_THR_L2_DISABLE	(U(3) << 24)
+
+#define WS_THR_L3_768B		(U(0) << 22)
+#define WS_THR_L3_16KB		(U(1) << 22)
+#define WS_THR_L3_32KB		(U(2) << 22)
+#define WS_THR_L3_DISABLE	(U(3) << 22)
+
+#define WS_THR_L4_16KB		(U(0) << 20)
+#define WS_THR_L4_64KB		(U(1) << 20)
+#define WS_THR_L4_128KB		(U(2) << 20)
+#define WS_THR_L4_DISABLE	(U(3) << 20)
+
+#define WS_THR_DRAM_64KB	(U(0) << 18)
+/* 1MB, for memory designated as outer-allocate.*/
+#define WS_THR_DRAM_ALLOC_1MB	(U(1) << 18)
+/* 1MB, allocating irrespective of outer-allocation designation. */
+#define WS_THR_DRAM_1MB		(U(2) << 18)
+#define WS_THR_DRAM_DISABLE	(U(3) << 18)
+
+#define WS_THR_DISABLE_ALL	(WS_THR_L2_DISABLE | WS_THR_L3_DISABLE | WS_THR_L4_DISABLE | \
+				WS_THR_DRAM_DISABLE)
+
+/*******************************************************************************
  * CPU Auxiliary Control register specific definitions.
  ******************************************************************************/
 #define CORTEX_A76_CPUACTLR_EL1					S3_0_C15_C1_0

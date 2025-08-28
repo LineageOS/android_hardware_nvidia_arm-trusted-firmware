@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
- * Copyright (c) 2020, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2020-2023, NVIDIA Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -17,6 +17,26 @@
 #include <tegra_def.h>
 
 static unsigned int tegra_target_masks[PLATFORM_CORE_COUNT];
+
+/* Help function to register platform specific structure base address */
+void tegra_gic_register_ctx_ptr(uintptr_t *redist_ptr, uintptr_t *dist_ptr)
+{
+	; /* do nohting */
+}
+
+/******************************************************************************
+  * Stubs for Redistributor power management. Although GICv2 doesn't have
+  * Redistributor interface, these are provided for the sake of uniform GIC API
+  *****************************************************************************/
+void tegra_gic_rdistif_on(void)
+{
+	; /* do nohting */
+}
+
+void tegra_gic_rdistif_off(void)
+{
+	; /* do nohting */
+}
 
 /******************************************************************************
  * Tegra common helper to setup the GICv2 driver data.
@@ -69,4 +89,20 @@ void tegra_gic_pcpu_init(void)
 	gicv2_pcpu_distif_init();
 	gicv2_set_pe_target_mask(plat_my_core_pos());
 	gicv2_cpuif_enable();
+}
+
+/******************************************************************************
+ * Tegra helper to save & restore the GICv2 on resume from CPU or system suspend
+ *****************************************************************************/
+void tegra_gic_save(uint32_t pstate_id)
+{
+	; /* do nohting */
+}
+
+void tegra_gic_restore(uint32_t pstate_id)
+{
+	if (pstate_id == PSTATE_ID_SOC_POWERDN) {
+		gicv2_distif_init();
+	}
+	tegra_gic_pcpu_init();
 }

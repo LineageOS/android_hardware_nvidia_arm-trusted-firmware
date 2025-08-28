@@ -33,6 +33,14 @@ vulnerability workarounds should be applied at runtime.
    This build option should be set to 1 if the target platform contains at
    least 1 CPU that requires this mitigation. Defaults to 1.
 
+-  ``WORKAROUND_CVE_2024_5660``: Enables mitigation for `CVE-2024-5660`_.
+   This build option should be set to 1 if the target platform contains at
+   least 1 CPU that requires this mitigation. Defaults to 1.
+
+-  ``WORKAROUND_CVE_2024_7881``: Enables mitigation for `CVE-2024-7881`_.
+   This build option should be set to 1 if the target platform contains at
+   least 1 CPU that requires this mitigation. Defaults to 1.
+
 .. _arm_cpu_macros_errata_workarounds:
 
 CPU Errata Workarounds
@@ -353,10 +361,30 @@ For Cortex-A78AE, the following errata build flags are defined :
   Cortex-A78AE CPU. This needs to be enabled for revisions r0p0 and r0p1. This
   erratum is still open.
 
+- ``ERRATA_A78_AE_2466780`` : This applies errata 2466780 workaround to
+  Cortex-A78 AE CPU. This needs to be enabled for revisions r0p0, r0p1 and r0p2.
+  This erratum is still open.
+
 - ``ERRATA_A78_AE_2712574`` : This applies erratum 2712574 workaround to
   Cortex-A78AE CPU. This erratum affects system configurations that do not use
   an ARM interconnect IP. This needs to be enabled for revisions r0p0, r0p1 and
   r0p2. This erratum is still open.
+
+- ``ERRATA_A78_AE_3604886`` : This applies erratum 3604886 workaround to
+  Cortex-A78 AE CPU. This erratum affects revisions r0p0, r0p1, r0p2 and r0p3.
+  This erratum is still open.
+
+For Cortex-A78C, the following errata build flags are defined :
+
+- ``ERRATA_A78_AE_2743093``: This applies errata 2743093 workaround to Cortex-A78 AE
+   CPU. This needs to be enabled for revisions r0p0, r0p1 and r0p2.
+
+- ``ERRATA_A78_AE_2743229`` : This applies errata 2743229 workaround to
+  Cortex-A78 AE CPU. This needs to be enabled for revisions <= r0p2.
+
+- ``ERRATA_A78_AE_2855379`` : This applies errata 2855379 workaround to
+  Cortex-A78 AE CPU. This needs to be enabled for revisions <= r0p1. This
+  erratum is still open.
 
 For Cortex-A78C, the following errata build flags are defined :
 
@@ -404,6 +432,12 @@ For Cortex-A78C, the following errata build flags are defined :
 - ``ERRATA_A78C_2779484`` : This applies errata 2779484 workaround to
   Cortex-A78C CPU. This needs to be enabled for revisions r0p1 and r0p2.
   This erratum is still open.
+
+-  ``ERRATA_A78C_2855381``: This applies errata 2855381 workaround to
+  Cortex-A78C CPU. This needs to be enabled for revision <=r0p1 of the CPU.
+
+- ``ERRATA_A78C_3604888`` : This applies erratum 3604888 workaround to
+  Cortex-A78C CPU. This erratum affects revisions r0p0, r0p1, and r0p2.
 
 For Cortex-X1 CPU, the following errata build flags are defined:
 
@@ -540,6 +574,9 @@ For Neoverse V2, the following errata build flags are defined :
    CPU. This needs to be enabled for revisions r0p0, r0p1 and r0p2. It is still
    open.
 
+- ``ERRATA_V2_2394277`` : This applies errata 2394277 workaround to Neoverse-V2
+   CPU. This needs to be enabled for revisions < r0p1.
+
 -  ``ERRATA_V2_2618597``: This applies errata 2618597 workaround to Neoverse-V2
    CPU. This needs to be enabled for revisions r0p0 and r0p1. It is fixed in
    r0p2.
@@ -553,21 +590,21 @@ For Neoverse V2, the following errata build flags are defined :
    IP. This needs to be enabled for revisions r0p0 and r0p1. It has been fixed
    in r0p2.
 
--  ``ERRATA_V2_2719105``: This applies errata 2719105 workaround to Neoverse-V2
-   CPU. This needs to be enabled for revisions r0p0 and r0p1. It is fixed in
-   r0p2.
+- ``ERRATA_V2_2719105`` : This applies errata 2719105 workaround to Neoverse-V2
+   CPU. This needs to be enabled for revisions < r0p2. Fixed in r0p2.
 
--  ``ERRATA_V2_2743011``: This applies errata 2743011 workaround to Neoverse-V2
-   CPU. This needs to be enabled for revisions r0p0 and r0p1. It is fixed in
-   r0p2.
+- ``ERRATA_V2_2743011`` : This applies errata 2743011 workaround to Neoverse-V2
+   CPU. This needs to be enabled for revisions < r0p2.
 
 -  ``ERRATA_V2_2779510``: This applies errata 2779510 workaround to Neoverse-V2
-   CPU. This needs to be enabled for revisions r0p0 and r0p1. It is fixed in
-   r0p2.
+   CPU. This needs to be enabled for revision <=r0p2 of the CPU.
 
 -  ``ERRATA_V2_2801372``: This applies errata 2801372 workaround to Neoverse-V2
    CPU, this affects all configurations. This needs to be enabled for revisions
    r0p0 and r0p1. It has been fixed in r0p2.
+
+-  ``ERRATA_V2_3604871`` : This applies errata 3604871 workaround to Neoverse-V2
+   CPU. This needs to be enabled for revision <=r0p2 of the CPU.
 
 For Cortex-A710, the following errata build flags are defined :
 
@@ -698,6 +735,11 @@ For Neoverse N2, the following errata build flags are defined :
    CPU. This needs to be enabled for revision r0p0 of the CPU, it is fixed in
    r0p1.
 
+- ``ERRATA_N2_2728475``: This applies erratum 2728475 workaround to Neoverse-N2
+   CPU, this erratum affects system configurations that do not use and ARM
+   interconnect IP. This needs to be enabled for revisions r0p0, r0p1 and r0p2.
+   It is fixed in r0p3.
+
 -  ``ERRATA_N2_2743014``: This applies errata 2743014 workaround to Neoverse-N2
    CPU. This needs to be enabled for revisions r0p0, r0p1 and r0p2. It is fixed
    in r0p3.
@@ -705,11 +747,6 @@ For Neoverse N2, the following errata build flags are defined :
 -  ``ERRATA_N2_2743089``: This applies errata 2743089 workaround to Neoverse-N2
    CPU. This needs to be enabled for revisions r0p0, r0p1 and r0p2. It is fixed
    in r0p3.
-
-- ``ERRATA_N2_2728475``: This applies erratum 2728475 workaround to Neoverse-N2
-   CPU, this erratum affects system configurations that do not use and ARM
-   interconnect IP. This needs to be enabled for revisions r0p0, r0p1 and r0p2.
-   It is fixed in r0p3.
 
 -  ``ERRATA_N2_2779511``: This applies errata 2779511 workaround to Neoverse-N2
    CPU. This needs to be enabled for revisions r0p0, r0p1 and r0p2. It is fixed
@@ -962,6 +999,14 @@ For Cortex-A720, the following errata build flags are defined :
    Cortex-A720 CPU. This needs to be enabled for revisions r0p0 and r0p1.
    It is fixed in r0p2.
 
+For Olympus, the following errata build flags are defined :
+
+-  ``ERRATA_OLYMPUS_5167426``: This applies errata 5167426 workaround to
+   all reviesions of Olympus CPU.
+
+-  ``ERRATA_OLYMPUS_5258219``: This applies errata 5258219 workaround to
+   all reviesions of Olympus CPU.
+
 DSU Errata Workarounds
 ----------------------
 
@@ -1044,6 +1089,18 @@ GIC Errata Workarounds
    to implementations of GIC600 and GIC600-AE with revisions less than or equal
    to r1p6 and r0p2 respectively. If the platform sets GICV3_SUPPORT_GIC600,
    then this flag is enabled; otherwise, it is 0 (Disabled).
+
+-  ``GIC600AE_ERRATA_WA_1568841``: This flag applies errata 1568841 workaround
+   for the affected GIC600-AE implementations. It applies to implementations of
+   GIC600-AE with revisions less than or equal to r0p2. If the platform sets
+   GICV3_SUPPORT_GIC600, then this flag is    enabled; otherwise, it is 0
+   (Disabled).
+
+-  ''GIC600AE_ERRATA_WA_2079287'': This flag applies errata 2079287 workaround
+   for the affected GIC600-AE implementations. It applies to implementations of
+   GIC600-AE with revisions less than or equal to r0p2. If the platform sets
+   GICV3_SUPPORT_GIC600, then this flag is enabled; otherwise, it is 0
+   (Disabled).
 
 --------------
 

@@ -13,7 +13,7 @@
  ******************************************************************************/
 #define PROFILER_SIZE_BYTES	U(0x1000)
 
-void boot_profiler_init(uint64_t shmem_base, uint32_t tmr_base);
+void boot_profiler_init(uint64_t shmem_base, uint64_t tmr_base);
 void boot_profiler_add_record(const char *str);
 void boot_profiler_deinit(void);
 

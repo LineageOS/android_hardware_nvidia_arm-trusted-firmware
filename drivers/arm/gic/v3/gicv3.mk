@@ -1,6 +1,6 @@
 #
 # Copyright (c) 2013-2022, Arm Limited and Contributors. All rights reserved.
-# Copyright (c) 2021, NVIDIA Corporation. All rights reserved.
+# Copyright (c) 2021-2023, NVIDIA Corporation. All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
 #
@@ -12,7 +12,11 @@ GICV3_IMPL_GIC600_MULTICHIP	?=	0
 GICV3_OVERRIDE_DISTIF_PWR_OPS	?=	0
 GIC_ENABLE_V4_EXTN		?=	0
 GIC_EXT_INTID			?=	0
+GICV3_RESTRICT_GICT_GICP_ACCESS ?=	0
+GIC600_ERRATA_WA_1717652	?=	0
 GIC600_ERRATA_WA_2384374	?=	${GICV3_SUPPORT_GIC600}
+GIC600AE_ERRATA_WA_1568841	?=	${GICV3_SUPPORT_GIC600}
+GIC600AE_ERRATA_WA_2079287	?=	${GICV3_SUPPORT_GIC600}
 
 GICV3_SOURCES	+=	drivers/arm/gic/v3/gicv3_main.c		\
 			drivers/arm/gic/v3/gicv3_helpers.c	\
@@ -54,5 +58,14 @@ $(eval $(call assert_boolean,GIC_EXT_INTID))
 $(eval $(call add_define,GIC_EXT_INTID))
 
 # Set errata workaround for GIC600/GIC600AE
+$(eval $(call assert_boolean,GIC600_ERRATA_WA_1717652))
+$(eval $(call add_define,GIC600_ERRATA_WA_1717652))
+
 $(eval $(call assert_boolean,GIC600_ERRATA_WA_2384374))
 $(eval $(call add_define,GIC600_ERRATA_WA_2384374))
+
+$(eval $(call assert_boolean,GIC600AE_ERRATA_WA_1568841))
+$(eval $(call add_define,GIC600AE_ERRATA_WA_1568841))
+
+$(eval $(call assert_boolean,GIC600AE_ERRATA_WA_2079287))
+$(eval $(call add_define,GIC600AE_ERRATA_WA_2079287))

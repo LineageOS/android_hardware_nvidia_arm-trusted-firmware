@@ -7,23 +7,23 @@
 #include <arch.h>
 #include <asm_macros.S>
 #include <common/bl_common.h>
-#include <cortex_x3.h>
+#include <cortex_makalu_elp_arm.h>
 #include <cpu_macros.S>
 #include <plat_macros.S>
 #include "wa_cve_2022_23960_bhb_vector.S"
 
 /* Hardware handled coherency */
 #if HW_ASSISTED_COHERENCY == 0
-#error "Cortex-X3 must be compiled with HW_ASSISTED_COHERENCY enabled"
+#error "Cortex Makalu ELP must be compiled with HW_ASSISTED_COHERENCY enabled"
 #endif
 
 /* 64-bit only core */
 #if CTX_INCLUDE_AARCH32_REGS == 1
-#error "Cortex-X3 supports only AArch64. Compile with CTX_INCLUDE_AARCH32_REGS=0"
+#error "Cortex Makalu ELP supports only AArch64. Compile with CTX_INCLUDE_AARCH32_REGS=0"
 #endif
 
 #if WORKAROUND_CVE_2022_23960
-	wa_cve_2022_23960_bhb_vector_table CORTEX_X3_BHB_LOOP_COUNT, cortex_x3
+	wa_cve_2022_23960_bhb_vector_table CORTEX_MAKALU_ELP_ARM_BHB_LOOP_COUNT, cortex_makalu_elp_arm
 #endif /* WORKAROUND_CVE_2022_23960 */
 
 workaround_reset_start cortex_x3, ERRATUM(2070301), ERRATA_X3_2070301
@@ -126,7 +126,7 @@ func cortex_x3_core_pwr_dwn
 endfunc cortex_x3_core_pwr_dwn
 
 	/* ---------------------------------------------
-	 * This function provides Cortex-X3-
+	 * This function provides Cortex Makalu ELP-
 	 * specific register information for crash
 	 * reporting. It needs to return with x6
 	 * pointing to a list of register names in ascii
@@ -134,16 +134,16 @@ endfunc cortex_x3_core_pwr_dwn
 	 * reported.
 	 * ---------------------------------------------
 	 */
-.section .rodata.cortex_x3_regs, "aS"
-cortex_x3_regs:  /* The ascii list of register names to be reported */
+.section .rodata.cortex_makalu_elp_arm_regs, "aS"
+cortex_makalu_elp_arm_regs:  /* The ascii list of register names to be reported */
 	.asciz	"cpuectlr_el1", ""
 
-func cortex_x3_cpu_reg_dump
-	adr	x6, cortex_x3_regs
-	mrs	x8, CORTEX_X3_CPUECTLR_EL1
+func cortex_makalu_elp_arm_cpu_reg_dump
+	adr	x6, cortex_makalu_elp_arm_regs
+	mrs	x8, CORTEX_MAKALU_ELP_ARM_CPUECTLR_EL1
 	ret
-endfunc cortex_x3_cpu_reg_dump
+endfunc cortex_makalu_elp_arm_cpu_reg_dump
 
-declare_cpu_ops cortex_x3, CORTEX_X3_MIDR, \
-	cortex_x3_reset_func, \
-	cortex_x3_core_pwr_dwn
+declare_cpu_ops cortex_makalu_elp_arm, CORTEX_MAKALU_ELP_ARM_MIDR, \
+	cortex_makalu_elp_arm_reset_func, \
+	cortex_makalu_elp_arm_core_pwr_dwn

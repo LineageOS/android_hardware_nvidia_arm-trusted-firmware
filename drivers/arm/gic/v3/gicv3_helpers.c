@@ -458,3 +458,52 @@ void gicv3_get_component_prodid_rev(const uintptr_t gicd_base,
 	*gic_rev = *gic_rev | gic_variant << 0x4;
 
 }
+
+#if GIC600AE_ERRATA_WA_1568841 || GIC600AE_ERRATA_WA_2079287
+/*******************************************************************************
+ * Workaround helper function for errata 1568841 and 2079287 as per SDEN:
+ * https://developer.arm.com/documentation/SDEN-1319947/latest
+ ******************************************************************************/
+void gicv3_apply_errata_wa_1568841_2079287(uintptr_t gicd_base)
+{
+	__unused unsigned int i, num_ints;
+
+	unsigned int gic_prod_id;
+	uint8_t gic_rev;
+
+	gicv3_get_component_prodid_rev(gicd_base, &gic_prod_id, &gic_rev);
+
+	/*
+	 * GIC-600AE errata 1568841 and 2079287 apply to revisions r0p0 - r0p2
+	 * and are still open.
+	 */
+	if ((gic_prod_id != GIC_PRODUCT_ID_GIC600AE) ||
+	    (gic_rev > GIC_REV(GIC_VARIANT_R0, GIC_REV_P2))) {
+		return;
+	}
+
+#if GIC600AE_ERRATA_WA_1568841
+	/*
+	 * GIC-600AE erratum 1568841 is a cat B erratum that applies to
+	 * revisions r0p0 - r0p2 and is still open. The workaround disable SPIs
+	 * by writing to ICENABLER<n> before reprogramming them, especially if
+	 * rerouting them by programming GICD_IROUTER.
+	 */
+	num_ints = gicv3_get_spi_limit(gicd_base);
+	for (i = MIN_SPI_ID; i < num_ints; i += (1U << IGROUPR_SHIFT)) {
+		gicd_write_icenabler(gicd_base, i, ~0U);
+	}
+#endif
+
+#if GIC600AE_ERRATA_WA_2079287
+	/*
+	 * GIC-600AE erratum 2079287 is a cat B erratum that applies to
+	 * revisions r0p0 - r0p2 and is still open. The workaround is to write
+	 * 0xFFFFFFFF to the GICD_ICENABLER1 register, before initializing the
+	 * GIC to avoid a fault being reported when lockstep is lost between
+	 * the primary and secondary GIC instances.
+	 */
+	gicd_write_icenabler(gicd_base, 1, ~0U);
+#endif
+}
+#endif

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2016-2024, Arm Limited and Contributors. All rights reserved.
- * Copyright (c) 2020, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2016-2024, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2020-2025, NVIDIA Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -29,9 +29,13 @@
 /*******************************************************************************
  * Static variables
  ******************************************************************************/
-static uint64_t ns_fiq_handler_addr;
 static uint32_t fiq_handler_active;
-static pcpu_fiq_state_t fiq_state[PLATFORM_CORE_COUNT];
+
+#pragma weak plat_fiq_handler
+bool plat_fiq_handler(unsigned int id)
+{
+	return false;
+}
 
 /*******************************************************************************
  * Handler for FIQ interrupts
@@ -39,38 +43,12 @@ static pcpu_fiq_state_t fiq_state[PLATFORM_CORE_COUNT];
 static int tegra_fiq_interrupt_handler(unsigned int id, unsigned int flags,
 		void *handle, void *cookie)
 {
-	cpu_context_t *ctx = cm_get_context(NON_SECURE);
-	el3_state_t *el3state_ctx = get_el3state_ctx(ctx);
-	uint32_t cpu = plat_my_core_pos();
-
 	(void)flags;
 	(void)handle;
 	(void)cookie;
 
-	/*
-	 * Jump to NS world only if the NS world's FIQ handler has
-	 * been registered
-	 */
-	if (ns_fiq_handler_addr != 0U) {
-
-		/*
-		 * The FIQ was generated when the execution was in the non-secure
-		 * world. Save the context registers to start with.
-		 */
-		cm_el1_sysregs_context_save(NON_SECURE);
-
-		/*
-		 * Save elr_el3 and spsr_el3 from the saved context, and overwrite
-		 * the context with the NS fiq_handler_addr and SPSR value.
-		 */
-		fiq_state[cpu].elr_el3 = read_ctx_reg((el3state_ctx), (uint32_t)(CTX_ELR_EL3));
-		fiq_state[cpu].spsr_el3 = read_ctx_reg((el3state_ctx), (uint32_t)(CTX_SPSR_EL3));
-
-		/*
-		 * Set the new ELR to continue execution in the NS world using the
-		 * FIQ handler registered earlier.
-		 */
-		cm_set_elr_el3(NON_SECURE, ns_fiq_handler_addr);
+	if (plat_fiq_handler(id)) {
+		return 0U;
 	}
 
 #if ENABLE_WDT_LEGACY_FIQ_HANDLING
@@ -111,39 +89,4 @@ void tegra_fiq_handler_setup(void)
 		/* handler is now active */
 		fiq_handler_active = 1;
 	}
-}
-
-/*******************************************************************************
- * Validate and store NS world's entrypoint for FIQ interrupts
- ******************************************************************************/
-void tegra_fiq_set_ns_entrypoint(uint64_t entrypoint)
-{
-	ns_fiq_handler_addr = entrypoint;
-}
-
-/*******************************************************************************
- * Handler to return the NS EL1/EL0 CPU context
- ******************************************************************************/
-int32_t tegra_fiq_get_intr_context(void)
-{
-	cpu_context_t *ctx = cm_get_context(NON_SECURE);
-	gp_regs_t *gpregs_ctx = get_gpregs_ctx(ctx);
-	const el1_sysregs_t *el1state_ctx = get_el1_sysregs_ctx(ctx);
-	uint32_t cpu = plat_my_core_pos();
-	uint64_t val;
-
-	/*
-	 * We store the ELR_EL3, SPSR_EL3, SP_EL0 and SP_EL1 registers so
-	 * that el3_exit() sends these values back to the NS world.
-	 */
-	write_ctx_reg((gpregs_ctx), (uint32_t)(CTX_GPREG_X0), (fiq_state[cpu].elr_el3));
-	write_ctx_reg((gpregs_ctx), (uint32_t)(CTX_GPREG_X1), (fiq_state[cpu].spsr_el3));
-
-	val = read_ctx_reg((gpregs_ctx), (uint32_t)(CTX_GPREG_SP_EL0));
-	write_ctx_reg((gpregs_ctx), (uint32_t)(CTX_GPREG_X2), (val));
-
-	val = read_el1_ctx_common(el1state_ctx, sp_el1);
-	write_ctx_reg((gpregs_ctx), (uint32_t)(CTX_GPREG_X3), (val));
-
-	return 0;
 }

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2015-2024, Arm Limited and Contributors. All rights reserved.
+ * Copyright (c) 2023, NVIDIA Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -595,6 +596,21 @@ void gicv3_get_component_prodid_rev(const uintptr_t gicd_base,
 				    unsigned int *gic_prod_id,
 				    uint8_t *gic_rev);
 void gicv3_check_erratas_applies(const uintptr_t gicd_base);
+
+#if GIC600_ERRATA_WA_1717652
+uint32_t gicv3_rdistif_pwrr_get_rdgo(unsigned int proc_num);
+bool gicv3_is_errata_wa_1717652_ready(unsigned int proc_num);
+#else
+static inline uint32_t gicv3_rdistif_pwrr_get_rdgo(unsigned int proc_num)
+{
+	return 0U;
+};
+static inline bool gicv3_is_errata_wa_1717652_ready(unsigned int proc_num)
+{
+	return false;
+};
+#endif
+
 #if GIC600_ERRATA_WA_2384374
 void gicv3_apply_errata_wa_2384374(const uintptr_t gicr_base);
 #else

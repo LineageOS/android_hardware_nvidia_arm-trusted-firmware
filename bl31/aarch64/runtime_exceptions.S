@@ -206,7 +206,6 @@ vector_entry serror_sp_elx
 	 * path for further exceptions caused by EA handling
 	 */
 	str	xzr, [sp, #CTX_EL3STATE_OFFSET + CTX_NESTED_EA_FLAG]
-	unmask_async_ea
 	b	handle_lower_el_async_ea
 1:
 	restore_x30
@@ -386,6 +385,10 @@ sync_handler64:
 	mov	x7, xzr
 
 #if ENABLE_RME
+	mrs	x7, id_aa64pfr0_el1
+	ubfx	x7, x7, #ID_AA64PFR0_FEAT_RME_SHIFT, #ID_AA64PFR0_FEAT_RME_LENGTH
+	cbz	x7, 1f
+
 	/* Copy SCR_EL3.NSE bit to the flag to indicate caller's security */
 	ubfx	x7, x18, #SCR_NSE_SHIFT, #1
 
@@ -395,6 +398,7 @@ sync_handler64:
 	 * the SCR_EL3.NSE bit.
 	 */
 	lsl	x7, x7, #5
+1:
 #endif /* ENABLE_RME */
 
 	/* Copy SCR_EL3.NS bit to the flag to indicate caller's security */

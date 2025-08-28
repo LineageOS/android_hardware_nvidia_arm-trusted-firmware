@@ -228,6 +228,7 @@ int gic600_fmu_ras_handler(uint64_t base, int probe_data)
 	ERROR("RAS %s Error detected by GIC600 AE FMU\n",
 		((errstatus & FMU_ERRSTATUS_UE_BIT) != 0U) ?
 			"Uncorrectable" : "Corrected");
+	ERROR("\tStatus = 0x%" PRIx64 "\n", errstatus);
 	ERROR("\tStatus = 0x%lx \n", errstatus);
 	ERROR("\tBlock ID = 0x%x\n", blkid);
 	ERROR("\tSafety Mechanism ID = 0x%x (%s)\n", ierr,
@@ -267,6 +268,8 @@ void gic600_fmu_init(uint64_t base, uint64_t blk_present_mask,
 
 	/* Enable error detection for all error records */
 	for (unsigned int i = 0U; i < num_blk; i++) {
+		/* Clear ERR<n>_STATUS */
+		gic_fmu_write_errstatus(base, i, 0xFFFFFFFFU);
 
 		/*
 		 * Disable all safety mechanisms for blocks that are not

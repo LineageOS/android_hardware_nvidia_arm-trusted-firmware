@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018, Arm Limited and Contributors. All rights reserved.
- * Copyright (c) 2020, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2020-2023, NVIDIA Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -24,6 +24,8 @@
 #define ERR_ADDR(n)	(0x18ULL + (64ULL * (n)))
 #define ERR_MISC0(n)	(0x20ULL + (64ULL * (n)))
 #define ERR_MISC1(n)	(0x28ULL + (64ULL * (n)))
+#define ERR_MISC2(n)	(0x30ULL + (64ULL * (n)))
+#define ERR_MISC3(n)	(0x38ULL + (64ULL * (n)))
 
 /* Group Status Register (ERR_STATUS) offset */
 #define ERR_GSR(base, size_num_k, n) \
@@ -99,8 +101,8 @@
 #define ERR_CTLR_WCFI_SHIFT	9
 #define ERR_CTLR_WCFI_MASK	0x1
 
-#define ERR_CTLR_RCFI_SHIFT	8
-#define ERR_CTLR_RCFI_MASK	0x1
+#define ERR_CTLR_RCFI_SHIFT	U(8)
+#define ERR_CTLR_RCFI_MASK	ULL(0x1)
 #define ERR_CTLR_CFI_SHIFT	ERR_CTLR_RCFI_SHIFT
 #define ERR_CTLR_CFI_MASK	ERR_CTLR_RCFI_MASK
 
@@ -132,7 +134,7 @@
 #define ERR_CTLR_ED_MASK	0x1
 
 #define ERR_CTLR_CLR_FIELD(_ctlr, _field) \
-	(_ctlr) &= ~(ERR_CTLR_ ##_field _MASK << ERR_CTLR_ ##_field ##_SHIFT)
+	(_ctlr) &= ~(ERR_CTLR_ ##_field ##_MASK << ERR_CTLR_ ##_field ##_SHIFT)
 
 #define ERR_CTLR_SET_FIELD(_ctlr, _field, _value) \
 	(_ctlr) |= (((_value) & ERR_CTLR_ ##_field ##_MASK) << ERR_CTLR_ ##_field ##_SHIFT)

@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2013-2023, Arm Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2023, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -75,6 +76,9 @@ uint64_t opteed_synchronous_sp_entry(optee_context_t *optee_ctx)
 	assert(optee_ctx != NULL);
 	assert(optee_ctx->c_rt_ctx == 0);
 
+	/* Save the Non-Secure EL1 system register context */
+	cm_el1_sysregs_context_save(NON_SECURE);
+
 	/* Apply the Secure EL1 system register context and switch to it */
 	assert(cm_get_context(SECURE) == &optee_ctx->cpu_ctx);
 	cm_el1_sysregs_context_restore(SECURE);
@@ -103,6 +107,9 @@ void opteed_synchronous_sp_exit(optee_context_t *optee_ctx, uint64_t ret)
 	/* Save the Secure EL1 system register context */
 	assert(cm_get_context(SECURE) == &optee_ctx->cpu_ctx);
 	cm_el1_sysregs_context_save(SECURE);
+
+	/* Apply the Non-Secure EL1 system register context and switch to it */
+	cm_el1_sysregs_context_restore(NON_SECURE);
 
 	assert(optee_ctx->c_rt_ctx != 0);
 	opteed_exit_sp(optee_ctx->c_rt_ctx, ret);

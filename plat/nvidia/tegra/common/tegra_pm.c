@@ -28,6 +28,12 @@
 extern uint64_t tegra_bl31_phys_base;
 extern uint64_t tegra_sec_entry_point;
 
+#pragma weak tegra_soc_cpu_standby_exit
+void tegra_soc_cpu_standby_exit(plat_local_state_t cpu_state)
+{
+	return;
+}
+
 /*******************************************************************************
  * This handler is called by the PSCI implementation during the `SYSTEM_SUSPEND`
  * call to get the `power_state` parameter. This allows the platform to encode
@@ -78,6 +84,8 @@ static void tegra_cpu_standby(plat_local_state_t cpu_state)
 	 * handling any further interrupts
 	 */
 	write_scr_el3(saved_scr_el3);
+
+	tegra_soc_cpu_standby_exit(cpu_state);
 }
 
 /*******************************************************************************
@@ -106,9 +114,6 @@ static int tegra_pwr_domain_off_early(const psci_power_state_t *target_state)
 static void tegra_pwr_domain_off(const psci_power_state_t *target_state)
 {
 	(void)tegra_soc_pwr_domain_off(target_state);
-
-	/* disable GICC */
-	tegra_gic_cpuif_deactivate();
 }
 
 /*******************************************************************************
@@ -132,6 +137,9 @@ static void tegra_pwr_domain_suspend(const psci_power_state_t *target_state)
 
 	/* disable GICC */
 	tegra_gic_cpuif_deactivate();
+
+	/* save GIC Re-distributor and Distributor context */
+	tegra_gic_save(target_state->pwr_domain_state[PLAT_MAX_PWR_LVL]);
 }
 
 /*******************************************************************************
@@ -163,7 +171,7 @@ static __dead2 void tegra_pwr_domain_power_down_wfi(const psci_power_state_t
  ******************************************************************************/
 static void tegra_pwr_domain_on_finish(const psci_power_state_t *target_state)
 {
-	const plat_params_from_bl2_t *plat_params;
+	const bl31_plat_params_t __unused *plat_params;
 
 	/*
 	 * Check if we are exiting from deep sleep.
@@ -173,14 +181,15 @@ static void tegra_pwr_domain_on_finish(const psci_power_state_t *target_state)
 
 		/*
 		 * On entering System Suspend state, the GIC loses power
-		 * completely. Initialize the GIC global distributor and
+		 * completely. Restore the GIC global distributor and
 		 * GIC cpu interfaces.
 		 */
-		tegra_gic_init();
+		tegra_gic_restore(PSTATE_ID_SOC_POWERDN);
 
 		/* Restart console output. */
 		console_switch_state(CONSOLE_FLAG_RUNTIME);
 
+#if ENABLE_TEGRA_MEMCTRL
 		/*
 		 * Restore Memory Controller settings as it loses state
 		 * during system suspend.
@@ -193,11 +202,14 @@ static void tegra_pwr_domain_on_finish(const psci_power_state_t *target_state)
 		plat_params = bl31_get_plat_params();
 		tegra_memctrl_tzdram_setup(plat_params->tzdram_base,
 			(uint32_t)plat_params->tzdram_size);
-
-	} else {
+#endif
+	} else if (target_state->pwr_domain_state[MPIDR_AFFLVL0] == PSTATE_ID_CORE_POWERDN) {
 		/*
-		 * Initialize the GIC cpu and distributor interfaces
+		 * Restore the GIC cpu and distributor interfaces
 		 */
+		tegra_gic_restore(PSTATE_ID_CORE_POWERDN);
+	} else {
+		/* Initialize the GIC cpu and distributor interfaces */
 		tegra_gic_pcpu_init();
 	}
 
@@ -259,17 +271,7 @@ static int32_t tegra_validate_power_state(uint32_t power_state,
  ******************************************************************************/
 static int32_t tegra_validate_ns_entrypoint(uintptr_t entrypoint)
 {
-	int32_t ret = PSCI_E_INVALID_ADDRESS;
-
-	/*
-	 * Check if the non secure entrypoint lies within the non
-	 * secure DRAM.
-	 */
-	if ((entrypoint >= TEGRA_DRAM_BASE) && (entrypoint <= TEGRA_DRAM_END)) {
-		ret = PSCI_E_SUCCESS;
-	}
-
-	return ret;
+	return tegra_soc_validate_ns_entrypoint(entrypoint);
 }
 
 /*******************************************************************************
@@ -324,6 +326,17 @@ int plat_setup_psci_ops(uintptr_t sec_entrypoint,
 	 * Initialize PSCI ops struct
 	 */
 	*psci_ops = &tegra_plat_psci_ops;
+
+#if ENABLE_FEAT_RAS
+	/*
+	 * Before finishing the PSCI sequence and starting BL32, let us
+	 * dump all the core RAS records from the previous boot. Since booting
+	 * secondary cores to dump the RAS records will require PM ops, flush
+	 * `psci_plat_pm_ops` before starting the cores.
+	 */
+	flush_dcache_range((uintptr_t)psci_ops, sizeof(*psci_ops));
+	tegra_ras_dump_core_records();
+#endif
 
 	return 0;
 }
