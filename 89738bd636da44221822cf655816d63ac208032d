@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a8d1da6c_f994cb89",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 14048
+      },
+      "writtenOn": "2025-09-20T16:45:48Z",
+      "side": 1,
+      "message": "This fixes a boot issue on Tegra210 and does not regress Tegra186 or Tegra194. Holding merge until upstream has a chance to respond. I will want to keep this in sync if changes are requested.",
+      "revId": "89738bd636da44221822cf655816d63ac208032d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
