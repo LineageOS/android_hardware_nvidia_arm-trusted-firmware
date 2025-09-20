@@ -37,13 +37,9 @@
 #define FUNCID_OEN_MASK			U(0x3f)
 #define FUNCID_OEN_WIDTH		U(6)
 
-#define FUNCID_FC_RESERVED_SHIFT	U(17)
-#define FUNCID_FC_RESERVED_MASK		U(0x7f)
-#define FUNCID_FC_RESERVED_WIDTH	U(7)
-
-#define FUNCID_SVE_HINT_SHIFT		U(16)
-#define FUNCID_SVE_HINT_MASK		U(1)
-#define FUNCID_SVE_HINT_WIDTH		U(1)
+#define FUNCID_SVE_HINT_SHIFT          U(16)
+#define FUNCID_SVE_HINT_MASK           U(1)
+#define FUNCID_SVE_HINT_WIDTH          U(1)
 
 #define FUNCID_NUM_SHIFT		U(0)
 #define FUNCID_NUM_MASK			U(0xffff)
