@@ -15,22 +15,30 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+/*
+ * Portions copyright (c) 2017, ARM Limited and Contributors.
+ * All rights reserved.
+ */
+
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD$");
 
 #include <string.h>
+#include <stdbool.h>
+#include <stdint.h>
 
-int __timingsafe_bcmp(const void *, const void *, size_t);
+bool __timingsafe_bcmp(const void *b1, const void *b2, size_t n);
 
-int
+bool
 __timingsafe_bcmp(const void *b1, const void *b2, size_t n)
 {
 	const unsigned char *p1 = b1, *p2 = b2;
-	int ret = 0;
+	uint32_t ret = 0;
 
-	for (; n > 0; n--)
-		ret |= *p1++ ^ *p2++;
-	return (ret != 0);
+	for (; n > 0U; n--) {
+		ret |= (uint32_t)*p1++ ^ *p2++;
+	}
+	return (ret != 0U);
 }
 
 __weak_reference(__timingsafe_bcmp, timingsafe_bcmp);

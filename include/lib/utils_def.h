@@ -54,7 +54,7 @@
  * Both arguments must be unsigned pointer values (i.e. uintptr_t).
  */
 #define check_uptr_overflow(ptr, inc)		\
-	(((ptr) > UINTPTR_MAX - (inc)) ? 1 : 0)
+	(((ptr) > (UINTPTR_MAX - (inc))) ? 1 : 0)
 
 /*
  * For those constants to be shared between C and other sources, apply a 'u'
@@ -69,8 +69,8 @@
 # define  U(_x)		(_x)
 # define ULL(_x)	(_x)
 #else
-# define  U(_x)		(_x##u)
-# define ULL(_x)	(_x##ull)
+# define  U(_x)		(_x##U)
+# define ULL(_x)	(_x##ULL)
 #endif
 
 #endif /* __UTILS_DEF_H__ */

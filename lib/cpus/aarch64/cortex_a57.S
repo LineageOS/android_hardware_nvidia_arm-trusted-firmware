@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2014-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2014-2022, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2020, NVIDIA Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -304,6 +305,48 @@ func check_errata_833471
 	b	cpu_rev_var_ls
 endfunc check_errata_833471
 
+	/* --------------------------------------------------
+	 * Errata Workaround for Cortex A57 Errata #859972.
+	 * This applies only to revision <= r1p3 of Cortex A57.
+	 * Inputs:
+	 * x0: variant[4:7] and revision[0:3] of current cpu.
+	 * Shall clobber:
+	 * --------------------------------------------------
+	 */
+func errata_a57_859972_wa
+	mov	x17, x30
+	bl	check_errata_859972
+	cbz	x0, 1f
+	mrs	x1, CORTEX_A57_ACTLR_EL1
+	orr	x1, x1, #CORTEX_A57_ACTLR_EL1_DIS_INSTR_PREFETCH
+	msr	CORTEX_A57_ACTLR_EL1, x1
+1:
+	ret	x17
+endfunc errata_a57_859972_wa
+
+func check_errata_859972
+	mov	x1, #0x13
+	b	cpu_rev_var_ls
+endfunc check_errata_859972
+
+func check_errata_cve_2017_5715
+#if WORKAROUND_CVE_2017_5715
+	mov	x0, #ERRATA_APPLIES
+#else
+	mov	x0, #ERRATA_MISSING
+#endif
+	ret
+endfunc check_errata_cve_2017_5715
+
+func check_errata_cve_2018_3639
+#if WORKAROUND_CVE_2018_3639
+	mov	x0, #ERRATA_APPLIES
+#else
+	mov	x0, #ERRATA_MISSING
+#endif
+	ret
+endfunc check_errata_cve_2018_3639
+
 	/* -------------------------------------------------
 	 * The CPU Ops reset function for Cortex-A57.
 	 * Shall clobber: x0-x19
@@ -354,6 +397,40 @@ func cortex_a57_reset_func
 	bl	errata_a57_833471_wa
 #endif
 
+#if ERRATA_A57_859972
+	mov	x0, x18
+	bl	errata_a57_859972_wa
+#endif
+
+#if IMAGE_BL31 && ( WORKAROUND_CVE_2017_5715 || WORKAROUND_CVE_2022_23960 )
+	/* ---------------------------------------------------------------
+	 * Override vector table & enable existing workaround if either of
+	 * the build flags are enabled
+	 * ---------------------------------------------------------------
+	 */
+	adr	x0, wa_cve_2017_5715_mmu_vbar
+	msr	vbar_el3, x0
+#endif
+
+#if WORKAROUND_CVE_2018_3639
+	mrs	x0, CORTEX_A57_ACTLR_EL1
+	orr	x0, x0, #CORTEX_A57_ACTLR_EL1_DIS_LOAD_PASS_STORE
+	msr	CORTEX_A57_ACTLR_EL1, x0
+	isb
+	dsb	sy
+#endif
+
+#if A57_ENABLE_NONCACHEABLE_LOAD_FWD
+	/* ---------------------------------------------
+	 * Enable higher performance non-cacheable load
+	 * forwarding
+	 * ---------------------------------------------
+	 */
+	mrs	x0, CORTEX_A57_ACTLR_EL1
+	orr	x0, x0, #CORTEX_A57_ACTLR_EN_NC_LOAD_FWD
+	msr	CORTEX_A57_ACTLR_EL1, x0
+#endif
+
 	/* ---------------------------------------------
 	 * Enable the SMP bit.
 	 * ---------------------------------------------
@@ -364,6 +441,20 @@ func cortex_a57_reset_func
 	isb
 	ret	x19
 endfunc cortex_a57_reset_func
+
+func check_errata_cve_2022_23960
+#if WORKAROUND_CVE_2022_23960
+	mov	x0, #ERRATA_APPLIES
+#else
+	mov	x0, #ERRATA_MISSING
+#endif
+	ret
+endfunc check_errata_cve_2022_23960
+
+func check_smccc_arch_workaround_3
+	mov	x0, #ERRATA_APPLIES
+	ret
+endfunc check_smccc_arch_workaround_3
 
 	/* ----------------------------------------------------
 	 * The CPU Ops core power down function for Cortex-A57.
@@ -483,6 +574,10 @@ func cortex_a57_errata_report
 	report_errata ERRATA_A57_828024, cortex_a57, 828024
 	report_errata ERRATA_A57_829520, cortex_a57, 829520
 	report_errata ERRATA_A57_833471, cortex_a57, 833471
+	report_errata ERRATA_A57_859972, cortex_a57, 859972
+	report_errata WORKAROUND_CVE_2017_5715, cortex_a57, cve_2017_5715
+	report_errata WORKAROUND_CVE_2018_3639, cortex_a57, cve_2018_3639
+	report_errata WORKAROUND_CVE_2022_23960, cortex_a57, cve_2022_23960
 
 	ldp	x8, x30, [sp], #16
 	ret
@@ -510,8 +605,10 @@ func cortex_a57_cpu_reg_dump
 	ret
 endfunc cortex_a57_cpu_reg_dump
 
-
-declare_cpu_ops cortex_a57, CORTEX_A57_MIDR, \
+declare_cpu_ops_wa cortex_a57, CORTEX_A57_MIDR, \
 	cortex_a57_reset_func, \
+	check_errata_cve_2017_5715, \
+	CPU_NO_EXTRA2_FUNC, \
+	check_smccc_arch_workaround_3, \
 	cortex_a57_core_pwr_dwn, \
 	cortex_a57_cluster_pwr_dwn

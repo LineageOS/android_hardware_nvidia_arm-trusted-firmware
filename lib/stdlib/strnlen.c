@@ -37,9 +37,11 @@ strnlen(const char *s, size_t maxlen)
 {
 	size_t len;
 
-	for (len = 0; len < maxlen; len++, s++) {
-		if (!*s)
+	for (len = 0; len < maxlen; len++) {
+		if (*s == '\0') {
 			break;
+		}
+		s++;
 	}
 	return (len);
 }

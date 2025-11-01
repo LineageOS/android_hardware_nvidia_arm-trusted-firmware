@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2014-2017, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -56,10 +56,10 @@
 #define INTR_RM_FROM_SEC_SHIFT		SECURE		/* BIT[0] */
 #define INTR_RM_FROM_NS_SHIFT		NON_SECURE	/* BIT[1] */
 #define INTR_RM_FROM_FLAG_MASK		U(1)
-#define get_interrupt_rm_flag(flag, ss)	(((flag >> INTR_RM_FLAGS_SHIFT) >> ss) \
+#define get_interrupt_rm_flag(flag, ss)	((((uint32_t)(flag) >> INTR_RM_FLAGS_SHIFT) >> (ss)) \
 					 & INTR_RM_FROM_FLAG_MASK)
-#define set_interrupt_rm_flag(flag, ss)	(flag |= U(1) << ss)
-#define clr_interrupt_rm_flag(flag, ss)	(flag &= ~(U(1) << ss))
+#define set_interrupt_rm_flag(flag, ss)	((flag) |= U(1) << (ss))
+#define clr_interrupt_rm_flag(flag, ss)	((flag) &= ~(U(1) << (ss)))
 
 
 /*******************************************************************************
@@ -86,9 +86,9 @@
  ******************************************************************************/
 #define INTR_SRC_SS_FLAG_SHIFT		U(0)		/* BIT[0] */
 #define INTR_SRC_SS_FLAG_MASK		U(1)
-#define set_interrupt_src_ss(flag, val)	(flag |= val << INTR_SRC_SS_FLAG_SHIFT)
-#define clr_interrupt_src_ss(flag)	(flag &= ~(U(1) << INTR_SRC_SS_FLAG_SHIFT))
-#define get_interrupt_src_ss(flag)	((flag >> INTR_SRC_SS_FLAG_SHIFT) & \
+#define set_interrupt_src_ss(flag, val)	((flag) |= (val) << INTR_SRC_SS_FLAG_SHIFT)
+#define clr_interrupt_src_ss(flag)	((flag) &= ~(U(1) << INTR_SRC_SS_FLAG_SHIFT))
+#define get_interrupt_src_ss(flag)	(((flag) >> INTR_SRC_SS_FLAG_SHIFT) & \
 					 INTR_SRC_SS_FLAG_MASK)
 
 #ifndef __ASSEMBLY__
@@ -107,7 +107,7 @@ int32_t set_routing_model(uint32_t type, uint32_t flags);
 int32_t register_interrupt_type_handler(uint32_t type,
 					interrupt_type_handler_t handler,
 					uint32_t flags);
-interrupt_type_handler_t get_interrupt_type_handler(uint32_t interrupt_type);
+interrupt_type_handler_t get_interrupt_type_handler(uint32_t type);
 int disable_intr_rm_local(uint32_t type, uint32_t security_state);
 int enable_intr_rm_local(uint32_t type, uint32_t security_state);
 

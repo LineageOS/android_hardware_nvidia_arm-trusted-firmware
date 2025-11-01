@@ -113,7 +113,7 @@ initialization and call handler functions.
     is also used for diagnostic purposes
 
 *   `_start` and `_end` values must be based on the `OEN_*` values defined in
-    [`smcc.h`]
+    [`smccc.h`]
 
 *   `_type` must be one of `SMC_TYPE_FAST` or `SMC_TYPE_YIELD`
 
@@ -302,6 +302,6 @@ _Copyright (c) 2014-2015, ARM Limited and Contributors. All rights reserved._
 [`lib/psci`]:               ../lib/psci
 [`std_svc_setup.c`]:        ../services/std_svc/std_svc_setup.c
 [`runtime_svc.h`]:          ../include/common/runtime_svc.h
-[`smcc.h`]:                 ../include/lib/smcc.h
+[`smccc.h`]:                ../include/lib/smccc.h
 [PSCI]:                     http://infocenter.arm.com/help/topic/com.arm.doc.den0022c/DEN0022C_Power_State_Coordination_Interface.pdf "Power State Coordination Interface PDD (ARM DEN 0022C)"
 [SMCCC]:                    http://infocenter.arm.com/help/topic/com.arm.doc.den0028a/index.html "SMC Calling Convention PDD (ARM DEN 0028A)"

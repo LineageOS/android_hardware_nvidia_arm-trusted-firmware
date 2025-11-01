@@ -31,7 +31,7 @@
  */
 
 /*
- * Portions copyright (c) 2014, ARM Limited and Contributors.
+ * Portions copyright (c) 2014-2017, ARM Limited and Contributors.
  * All rights reserved.
  */
 
@@ -45,10 +45,12 @@
 int
 strcmp(const char *s1, const char *s2)
 {
-	while (*s1 == *s2++)
-		if (*s1++ == '\0')
+	while (*s1 == *s2++) {
+		if (*s1++ == '\0') {
 			return 0;
-	return *(const unsigned char *)s1 - *(const unsigned char *)(s2 - 1);
+		}
+	}
+	return (int)(*(const unsigned char *)s1) - (int)(*(const unsigned char *)(s2 - 1));
 }
 
 int
@@ -58,8 +60,9 @@ strcasecmp(const char *s1, const char *s2)
 	const unsigned char *us2 = (const unsigned char *)s2;
 
 	while (tolower(*us1) == tolower(*us2)) {
-		if (*us1++ == '\0')
+		if (*us1++ == (unsigned char)'\0') {
 			return 0;
+		}
 		us2++;
 	}
 	return tolower(*us1) - tolower(*us2);

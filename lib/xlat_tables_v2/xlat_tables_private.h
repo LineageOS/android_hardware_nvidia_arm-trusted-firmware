@@ -4,12 +4,13 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __XLAT_TABLES_PRIVATE_H__
-#define __XLAT_TABLES_PRIVATE_H__
+#ifndef XLAT_TABLES_PRIVATE_H
+#define XLAT_TABLES_PRIVATE_H
 
 #include <cassert.h>
 #include <platform_def.h>
 #include <utils_def.h>
+#include <stdbool.h>
 
 /*
  * If the platform hasn't defined a physical and a virtual address space size
@@ -40,7 +41,7 @@ typedef struct {
 	/*
 	 * Max allowed Virtual and Physical Addresses.
 	 */
-	unsigned long long pa_max_address;
+	uint64_t pa_max_address;
 	uintptr_t va_max_address;
 
 	/*
@@ -52,7 +53,7 @@ typedef struct {
 	 * null entry.
 	 */
 	mmap_region_t *mmap;
-	unsigned int mmap_num;
+	uint32_t mmap_num;
 
 	/*
 	 * Array of finer-grain translation tables.
@@ -60,37 +61,37 @@ typedef struct {
 	 * contain both level-2 and level-3 entries.
 	 */
 	uint64_t (*tables)[XLAT_TABLE_ENTRIES];
-	unsigned int tables_num;
+	uint32_t tables_num;
 	/*
 	 * Keep track of how many regions are mapped in each table. The base
 	 * table can't be unmapped so it isn't needed to keep track of it.
 	 */
 #if PLAT_XLAT_TABLES_DYNAMIC
-	int *tables_mapped_regions;
+	int32_t *tables_mapped_regions;
 #endif /* PLAT_XLAT_TABLES_DYNAMIC */
 
-	unsigned int next_table;
+	uint32_t next_table;
 
 	/*
 	 * Base translation table. It doesn't need to have the same amount of
 	 * entries as the ones used for other levels.
 	 */
 	uint64_t *base_table;
-	unsigned int base_table_entries;
+	uint32_t base_table_entries;
 
 	/*
 	 * Max Physical and Virtual addresses currently in use by the
 	 * translation tables. These might get updated as we map/unmap memory
 	 * regions but they will never go beyond pa/va_max_address.
 	 */
-	unsigned long long max_pa;
+	uint64_t max_pa;
 	uintptr_t max_va;
 
 	/* Level of the base translation table. */
-	unsigned int base_level;
+	uint32_t base_level;
 
 	/* Set to 1 when the translation tables are initialized. */
-	unsigned int initialized;
+	uint32_t initialized;
 
 	/*
 	 * Bit mask that has to be ORed to the rest of a translation table
@@ -106,7 +107,7 @@ typedef struct {
  * Shifts and masks to access fields of an mmap_attr_t
  */
 /* Dynamic or static */
-#define MT_DYN_SHIFT		30 /* 31 would cause undefined behaviours */
+#define MT_DYN_SHIFT		30U /* 31 would cause undefined behaviours */
 
 /*
  * Memory mapping private attributes
@@ -121,8 +122,8 @@ typedef enum  {
 	 *
 	 * Static regions can overlap each other, dynamic regions can't.
 	 */
-	MT_STATIC	= 0 << MT_DYN_SHIFT,
-	MT_DYNAMIC	= 1 << MT_DYN_SHIFT
+	MT_STATIC	= 0U << MT_DYN_SHIFT,
+	MT_DYNAMIC	= 1U << MT_DYN_SHIFT
 } mmap_priv_attr_t;
 
 /*
@@ -139,10 +140,10 @@ void xlat_arch_tlbi_va(uintptr_t va);
 void xlat_arch_tlbi_va_sync(void);
 
 /* Add a dynamic region to the specified context. */
-int mmap_add_dynamic_region_ctx(xlat_ctx_t *ctx, mmap_region_t *mm);
+int32_t mmap_add_dynamic_region_ctx(xlat_ctx_t *ctx, mmap_region_t *mm);
 
 /* Remove a dynamic region from the specified context. */
-int mmap_remove_dynamic_region_ctx(xlat_ctx_t *ctx, uintptr_t base_va,
+int32_t mmap_remove_dynamic_region_ctx(xlat_ctx_t *ctx, uintptr_t base_va,
 			size_t size);
 
 #endif /* PLAT_XLAT_TABLES_DYNAMIC */
@@ -170,22 +171,22 @@ void mmap_add_region_ctx(xlat_ctx_t *ctx, mmap_region_t *mm);
  */
 
 /* Returns the current Exception Level. The returned EL must be 1 or higher. */
-int xlat_arch_current_el(void);
+int32_t xlat_arch_current_el(void);
 
 /*
  * Returns the bit mask that has to be ORed to the rest of a translation table
  * descriptor so that execution of code is prohibited at the given Exception
  * Level.
  */
-uint64_t xlat_arch_get_xn_desc(int el);
+uint64_t xlat_arch_get_xn_desc(int32_t el);
 
 /* Execute architecture-specific translation table initialization code. */
-void init_xlat_tables_arch(unsigned long long max_pa);
+void init_xlat_tables_arch(uint64_t max_pa);
 
 /* Enable MMU and configure it to use the specified translation tables. */
-void enable_mmu_arch(unsigned int flags, uint64_t *base_table);
+void enable_mmu_arch(uint32_t flags, uint64_t *base_table);
 
 /* Return 1 if the MMU of this Exception Level is enabled, 0 otherwise. */
-int is_mmu_enabled(void);
+bool is_mmu_enabled(void);
 
-#endif /* __XLAT_TABLES_PRIVATE_H__ */
+#endif /* XLAT_TABLES_PRIVATE_H */

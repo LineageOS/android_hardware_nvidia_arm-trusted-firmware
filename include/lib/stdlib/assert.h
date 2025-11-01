@@ -66,9 +66,9 @@
 
 __BEGIN_DECLS
 #if PLAT_LOG_LEVEL_ASSERT >= LOG_LEVEL_VERBOSE
-void __assert(const char *, unsigned int, const char *) __dead2;
+void __assert(const char *file, unsigned int line, const char *assertion) __dead2;
 #elif PLAT_LOG_LEVEL_ASSERT >= LOG_LEVEL_INFO
-void __assert(const char *, unsigned int) __dead2;
+void __assert(const char *file, unsigned int line) __dead2;
 #else
 void __assert(void) __dead2;
 #endif

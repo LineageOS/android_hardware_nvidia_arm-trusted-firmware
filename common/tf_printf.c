@@ -15,36 +15,40 @@
  * The tf_printf implementation for all BL stages
  ***********************************************************/
 
-#define get_num_va_args(args, lcount) \
-	(((lcount) > 1) ? va_arg(args, long long int) :	\
-	((lcount) ? va_arg(args, long int) : va_arg(args, int)))
+#define get_num_va_args(args_m, lcount) \
+	(((lcount) > 1) ? va_arg(args_m, long long int) :	\
+	(((lcount) != 0) ? va_arg(args_m, long int) : va_arg(args_m, int)))
 
-#define get_unum_va_args(args, lcount) \
-	(((lcount) > 1) ? va_arg(args, unsigned long long int) :	\
-	((lcount) ? va_arg(args, unsigned long int) : va_arg(args, unsigned int)))
+#define get_unum_va_args(args_m, lcount) \
+	(((lcount) > 1) ? va_arg(args_m, unsigned long long int) :	\
+	(((lcount) != 0) ? va_arg(args_m, unsigned long int) : va_arg(args_m, unsigned int)))
 
 static void string_print(const char *str)
 {
-	while (*str)
-		putchar(*str++);
+	while (*str != '\0') {
+		(void)putchar((int32_t)*str++);
+	}
 }
 
-static void unsigned_num_print(unsigned long long int unum, unsigned int radix)
+static void unsigned_num_print(uint64_t unum, uint32_t radix)
 {
 	/* Just need enough space to store 64 bit decimal integer */
-	unsigned char num_buf[20];
-	int i = 0, rem;
+	char num_buf[20];
+	int32_t i = 0;
+	uint32_t rem;
 
 	do {
-		rem = unum % radix;
-		if (rem < 0xa)
+		rem = (uint32_t)unum % radix;
+		if (rem < 0xaU) {
 			num_buf[i++] = '0' + rem;
-		else
-			num_buf[i++] = 'a' + (rem - 0xa);
-	} while (unum /= radix);
+		} else {
+			num_buf[i++] = 'a' + (rem - 0xaU);
+		}
+	} while ((unum /= radix) != 0U);
 
-	while (--i >= 0)
-		putchar(num_buf[i]);
+	while (--i >= 0) {
+		(void)putchar((int32_t)num_buf[i]);
+	}
 }
 
 /*******************************************************************
@@ -67,28 +71,41 @@ static void unsigned_num_print(unsigned long long int unum, unsigned int radix)
 void tf_printf(const char *fmt, ...)
 {
 	va_list args;
-	int l_count;
-	long long int num;
-	unsigned long long int unum;
+	int32_t l_count;
+	int64_t num;
+	uint64_t unum;
 	char *str;
+	uintptr_t ptr;
 
 	va_start(args, fmt);
-	while (*fmt) {
+	while (*fmt != '\0') {
 		l_count = 0;
 
 		if (*fmt == '%') {
 			fmt++;
+
+			/* adjust l_count for 'l' and 'z' cases */
+			while ((*fmt == 'l') || (*fmt == 'z')) {
+				if (*fmt == 'l') {
+					l_count++;
+				}
+				if ((*fmt == 'z')) {
+					l_count = 2;
+				}
+				fmt++;
+			};
+
 			/* Check the format specifier */
-loop:
 			switch (*fmt) {
 			case 'i': /* Fall through to next one */
 			case 'd':
 				num = get_num_va_args(args, l_count);
 				if (num < 0) {
-					putchar('-');
-					unum = (unsigned long long int)-num;
-				} else
-					unum = (unsigned long long int)num;
+					(void)putchar((int32_t)'-');
+					unum = (uint64_t)-num;
+				} else {
+					unum = (uint64_t)num;
+				}
 
 				unsigned_num_print(unum, 10);
 				break;
@@ -97,39 +114,31 @@ loop:
 				string_print(str);
 				break;
 			case 'p':
-				unum = (uintptr_t)va_arg(args, void *);
-				if (unum)
+				ptr = va_arg(args, uintptr_t);
+				if (ptr != 0U) {
 					string_print("0x");
+				}
 
-				unsigned_num_print(unum, 16);
+				unsigned_num_print(ptr, 16);
 				break;
 			case 'x':
 				unum = get_unum_va_args(args, l_count);
 				unsigned_num_print(unum, 16);
 				break;
-			case 'z':
-				if (sizeof(size_t) == 8)
-					l_count = 2;
-
-				fmt++;
-				goto loop;
-			case 'l':
-				l_count++;
-				fmt++;
-				goto loop;
 			case 'u':
 				unum = get_unum_va_args(args, l_count);
 				unsigned_num_print(unum, 10);
 				break;
 			default:
-				/* Exit on any other format specifier */
-				goto exit;
+				/* assert on any other format specifier */
+				assert(true);
+				break;
 			}
 			fmt++;
-			continue;
+		} else {
+			(void)putchar((int32_t)*fmt++);
 		}
-		putchar(*fmt++);
 	}
-exit:
+
 	va_end(args);
 }

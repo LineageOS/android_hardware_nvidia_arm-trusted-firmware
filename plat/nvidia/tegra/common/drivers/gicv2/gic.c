@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -46,7 +46,7 @@ void tegra_gic_cpuif_deactivate(void)
  * Enable secure interrupts and set the priority mask register to allow all
  * interrupts to trickle in.
  ******************************************************************************/
-static void tegra_gic_cpuif_setup(uint32_t gicc_base)
+static void tegra_gic_cpuif_enable(uint32_t gicc_base)
 {
 	uint32_t val;
 
@@ -61,33 +61,60 @@ static void tegra_gic_cpuif_setup(uint32_t gicc_base)
  * Per cpu gic distributor setup which will be done by all cpus after a cold
  * boot/hotplug. This marks out the secure interrupts & enables them.
  ******************************************************************************/
-static void tegra_gic_pcpu_distif_setup(uint32_t gicd_base)
+static void tegra_gic_pcpu_distif_init(uint32_t gicd_base)
 {
-	uint32_t index, sec_ppi_sgi_mask = 0;
+	uint32_t index, irq_num, sec_ppi_sgi_mask = 0;
 
 	assert(gicd_base != 0U);
 
+	/*
+	 * Disable all SGIs (imp. def.)/PPIs before configuring them. This is a
+	 * more scalable approach as it avoids clearing the enable bits in the
+	 * GICD_CTLR.
+	 */
+	gicd_write_icenabler(gicd_base, 0U, 0xFFFFFFFFU);
+
 	/* Setup PPI priorities doing four at a time */
-	for (index = 0U; index < 32U; index += 4U) {
+	for (index = 0U; index < MIN_SPI_ID; index += 4U) {
 		gicd_write_ipriorityr(gicd_base, index,
 				GICD_IPRIORITYR_DEF_VAL);
 	}
 
+	/* Configure PPI secure interrupts now */
+	if (g_irq_sec_ptr != NULL) {
+		for (index = 0U; index < g_num_irqs; index++) {
+			irq_num = g_irq_sec_ptr[index].irq;
+
+			if (irq_num < MIN_SPI_ID ) {
+				/* We have an SGI or a PPI. They are Group0 at reset */
+				sec_ppi_sgi_mask |= (1ULL << irq_num);
+
+				/* Configure this interrupt as a secure interrupt */
+				gicd_clr_igroupr(gicd_base, irq_num);
+
+				/* Set the priority of this interrupt */
+				gicd_set_ipriorityr(gicd_base, irq_num,
+					GIC_HIGHEST_SEC_PRIORITY);
+			}
+		}
+	}
+
 	/*
 	 * Invert the bitmask to create a mask for non-secure PPIs and
-	 * SGIs. Program the GICD_IGROUPR0 with this bit mask. This write will
-	 * update the GICR_IGROUPR0 as well in case we are running on a GICv3
-	 * system. This is critical if GICD_CTLR.ARE_NS=1.
+	 * SGIs. Program the GICD_IGROUPR0 with this bit mask.
 	 */
 	gicd_write_igroupr(gicd_base, 0, ~sec_ppi_sgi_mask);
+
+	/* Enable the Group 0 SGIs and PPIs */
+	gicd_write_isenabler(gicd_base, 0, sec_ppi_sgi_mask);
 }
 
 /*******************************************************************************
- * Global gic distributor setup which will be done by the primary cpu after a
- * cold boot. It marks out the non secure SPIs, PPIs & SGIs and enables them.
- * It then enables the secure GIC distributor interface.
+ * Global gic distributor init which will be done by the primary cpu after a
+ * cold boot. It marks out the secure SPIs, PPIs & SGIs and enables them. It
+ * then enables the secure GIC distributor interface.
  ******************************************************************************/
-static void tegra_gic_distif_setup(uint32_t gicd_base)
+static void tegra_gic_distif_init(uint32_t gicd_base)
 {
 	uint32_t index, num_ints, irq_num;
 	uint8_t target_cpus;
@@ -101,7 +128,7 @@ static void tegra_gic_distif_setup(uint32_t gicd_base)
 	num_ints = gicd_read_typer(gicd_base) & IT_LINES_NO_MASK;
 	num_ints = (num_ints + 1U) << 5;
 	for (index = MIN_SPI_ID; index < num_ints; index += 32U) {
-		gicd_write_igroupr(gicd_base, index, 0xFFFFFFFFU);
+		gicd_write_igroupr(gicd_base, index, ~0U);
 	}
 
 	/* Setup SPI priorities doing four at a time */
@@ -123,15 +150,12 @@ static void tegra_gic_distif_setup(uint32_t gicd_base)
 				gicd_clr_igroupr(gicd_base, irq_num);
 
 				/* Configure SPI priority */
-				mmio_write_8((uint64_t)gicd_base +
-					(uint64_t)GICD_IPRIORITYR +
-					(uint64_t)irq_num,
-					GIC_HIGHEST_SEC_PRIORITY &
-					GIC_PRI_MASK);
+				gicd_set_ipriorityr(gicd_base, irq_num,
+					GIC_HIGHEST_SEC_PRIORITY);
 
 				/* Configure as level triggered */
 				val = gicd_read_icfgr(gicd_base, irq_num);
-				val |= (3U << ((irq_num & 0xFU) << 1U));
+				val |= (uint32_t)(3U << ((irq_num & 0xFU) << 1U));
 				gicd_write_icfgr(gicd_base, irq_num, val);
 
 				/* Route SPI to the target CPUs */
@@ -144,24 +168,47 @@ static void tegra_gic_distif_setup(uint32_t gicd_base)
 		}
 	}
 
-	/*
-	 * Configure the SGI and PPI. This is done in a separated function
-	 * because each CPU is responsible for initializing its own private
-	 * interrupts.
-	 */
-	tegra_gic_pcpu_distif_setup(gicd_base);
-
 	/* enable distributor */
 	gicd_write_ctlr(gicd_base, ENABLE_GRP0 | ENABLE_GRP1);
 }
 
-void tegra_gic_setup(const irq_sec_cfg_t *irq_sec_ptr, uint32_t num_irqs)
+/*******************************************************************************
+ * Global GIC driver setup routine, to be called from the primary CPU during
+ * cold or warm boot, to setup the distributor interface, per-cpu SPI/PPIs and
+ * enable the GIC interface.
+ ******************************************************************************/
+void tegra_gic_init(void)
 {
-	g_irq_sec_ptr = irq_sec_ptr;
-	g_num_irqs = num_irqs;
+	tegra_gic_distif_init(TEGRA_GICD_BASE);
+	tegra_gic_pcpu_distif_init(TEGRA_GICD_BASE);
+	tegra_gic_cpuif_enable(TEGRA_GICC_BASE);
+}
 
-	tegra_gic_cpuif_setup(TEGRA_GICC_BASE);
-	tegra_gic_distif_setup(TEGRA_GICD_BASE);
+/*******************************************************************************
+ * Global GIC driver setup routine, to be called from any CPU during cold or
+ * warm boot, per-cpu SPI/PPIs and enable the GIC interface.
+ ******************************************************************************/
+void tegra_gic_pcpu_init(void)
+{
+	tegra_gic_pcpu_distif_init(TEGRA_GICD_BASE);
+	tegra_gic_cpuif_enable(TEGRA_GICC_BASE);
+}
+
+/*******************************************************************************
+ * Global GIC driver setup routine, to be called from the primary CPU during
+ * cold or warm boot, to setup the distributor interface, per-cpu SPI/PPIs and
+ * enable the GIC interface.
+ ******************************************************************************/
+void tegra_gic_setup(tegra_gic_cfg_t *cfg)
+{
+	if (cfg) {
+		assert(cfg->irq_cfg != NULL);
+		assert(cfg->g0_int_num != 0U);
+		g_irq_sec_ptr = cfg->irq_cfg;
+		g_num_irqs = cfg->g0_int_num;
+	}
+
+	tegra_gic_init();
 }
 
 /*******************************************************************************
@@ -182,6 +229,8 @@ static uint32_t tegra_gic_interrupt_type_to_line(uint32_t type,
 	       (type == INTR_TYPE_NS));
 
 	assert(sec_state_is_valid(security_state));
+
+	(void)security_state;
 
 	/*
 	 * We ignore the security state parameter under the assumption that
@@ -237,10 +286,10 @@ static uint32_t tegra_gic_get_pending_interrupt_id(void)
 
 	id = gicc_read_hppir(TEGRA_GICC_BASE) & INT_ID_MASK;
 
-	if (id < 1022UL) {
+	if (id < 1022U) {
 		ret = id;
-	} else if (id == 1023UL) {
-		ret = 0xFFFFFFFFUL; /* INTR_ID_UNAVAILABLE */
+	} else if (id == 1023U) {
+		ret = INTR_ID_UNAVAILABLE;
 	} else {
 		/*
 		 * Find out which non-secure interrupt it is under the assumption that

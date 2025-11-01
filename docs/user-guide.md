@@ -74,8 +74,8 @@ The [Linaro Release Notes][Linaro Release Notes] documents which version of the
 compiler to use for a given Linaro Release. Also, these
 [Linaro instructions][Linaro SW Instructions] provide further guidance.
 
-Optionally, Trusted Firmware can be built using clang or ARM Compiler 6.
-See instructions below on how to switch the default compiler.
+Optionally, Trusted Firmware can be built using clang version 4.0 or newer or
+ARM Compiler 6. See instructions below on how to switch the default compiler.
 
 In addition, the following optional packages and tools may be needed:
 
@@ -107,10 +107,14 @@ Download the Trusted Firmware source code from Github:
 
         export CROSS_COMPILE=<path-to-aarch32-gcc>/bin/arm-linux-gnueabihf-
 
-    It is possible to build Trusted Firmware using clang or ARM Compiler 6.
-    To do so `CC` needs to point to the clang or armclang binary. Only the
-    compiler is switched; the assembler and linker need to be provided by
-    the GNU toolchain, thus `CROSS_COMPILE` should be set as described above.
+    It is possible to build TF-A using Clang or Arm Compiler 6. To do so
+    ``CC`` needs to point to the clang or armclang binary, which will
+    also select the clang or armclang assembler. Be aware that the
+    GNU linker is used by default.  In case of being needed the linker
+    can be overriden using the ``LD`` variable. Clang linker version 6 is
+    known to work with TF-A.
+
+    In both cases ``CROSS_COMPILE`` should be set as described above.
 
     ARM Compiler 6 will be selected when the base name of the path assigned
     to `CC` matches the string 'armclang'.
@@ -482,6 +486,11 @@ performed.
     memory usage. See "Isolating code and read-only data on separate memory
     pages" section in [Firmware Design]. This flag is disabled by default and
     affects all BL images.
+
+*  ``SMCCC_MAJOR_VERSION``: Numeric value that indicates the major version of
+    the SMC Calling Convention that the Trusted Firmware supports. The only two
+    allowed values are 1 and 2, and it defaults to 1. The minor version is
+    determined using this value.
 
 *   `SPD`: Choose a Secure Payload Dispatcher component to be built into the
     Trusted Firmware. This build option is only valid if `ARCH=aarch64`. The

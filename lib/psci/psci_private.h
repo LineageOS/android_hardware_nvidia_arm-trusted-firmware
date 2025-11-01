@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __PSCI_PRIVATE_H__
-#define __PSCI_PRIVATE_H__
+#ifndef PSCI_PRIVATE_H
+#define PSCI_PRIVATE_H
 
 #include <arch.h>
 #include <bakery_lock.h>
@@ -13,6 +13,7 @@
 #include <cpu_data.h>
 #include <psci.h>
 #include <spinlock.h>
+#include <stdbool.h>
 
 #if HW_ASSISTED_COHERENCY
 
@@ -95,20 +96,20 @@
  * Helper macros to get/set the fields of PSCI per-cpu data.
  */
 #define psci_set_aff_info_state(aff_state) \
-		set_cpu_data(psci_svc_cpu_data.aff_info_state, aff_state)
+		set_cpu_data(psci_svc_cpu_data.aff_info_state, (aff_state))
 #define psci_get_aff_info_state() \
 		get_cpu_data(psci_svc_cpu_data.aff_info_state)
 #define psci_get_aff_info_state_by_idx(idx) \
 		get_cpu_data_by_index(idx, psci_svc_cpu_data.aff_info_state)
 #define psci_set_aff_info_state_by_idx(idx, aff_state) \
 		set_cpu_data_by_index(idx, psci_svc_cpu_data.aff_info_state,\
-					aff_state)
+					(aff_state))
 #define psci_get_suspend_pwrlvl() \
 		get_cpu_data(psci_svc_cpu_data.target_pwrlvl)
-#define psci_set_suspend_pwrlvl(target_lvl) \
-		set_cpu_data(psci_svc_cpu_data.target_pwrlvl, target_lvl)
+#define psci_set_suspend_pwrlvl(target_level) \
+		set_cpu_data(psci_svc_cpu_data.target_pwrlvl, (target_level))
 #define psci_set_cpu_local_state(state) \
-		set_cpu_data(psci_svc_cpu_data.local_state, state)
+		set_cpu_data(psci_svc_cpu_data.local_state, (state))
 #define psci_get_cpu_local_state() \
 		get_cpu_data(psci_svc_cpu_data.local_state)
 #define psci_get_cpu_local_state_by_idx(idx) \
@@ -121,8 +122,8 @@
 #define psci_spin_unlock_cpu(idx) spin_unlock(&psci_cpu_pd_nodes[idx].cpu_lock)
 
 /* Helper macro to identify a CPU standby request in PSCI Suspend call */
-#define is_cpu_standby_req(is_power_down_state, retn_lvl) \
-		(((!(is_power_down_state)) && ((retn_lvl) == 0)) ? 1 : 0)
+#define is_cpu_standby_req(is_power_down_state_m, retn_lvl) \
+		(((((is_power_down_state_m) == 0U)) && ((retn_lvl) == 0U)) ? true : false)
 
 /*******************************************************************************
  * The following two data structures implement the power domain tree. The tree
@@ -136,20 +137,20 @@ typedef struct non_cpu_pwr_domain_node {
 	 * Index of the first CPU power domain node level 0 which has this node
 	 * as its parent.
 	 */
-	unsigned int cpu_start_idx;
+	uint32_t cpu_start_idx;
 
 	/*
 	 * Number of CPU power domains which are siblings of the domain indexed
 	 * by 'cpu_start_idx' i.e. all the domains in the range 'cpu_start_idx
 	 * -> cpu_start_idx + ncpus' have this node as their parent.
 	 */
-	unsigned int ncpus;
+	uint32_t ncpus;
 
 	/*
 	 * Index of the parent power domain node.
 	 * TODO: Figure out whether to whether using pointer is more efficient.
 	 */
-	unsigned int parent_node;
+	uint32_t parent_node;
 
 	plat_local_state_t local_state;
 
@@ -166,7 +167,7 @@ typedef struct cpu_pwr_domain_node {
 	 * Index of the parent power domain node.
 	 * TODO: Figure out whether to whether using pointer is more efficient.
 	 */
-	unsigned int parent_node;
+	uint32_t parent_node;
 
 	/*
 	 * A CPU power domain does not require state coordination like its
@@ -183,7 +184,7 @@ typedef struct cpu_pwr_domain_node {
 extern const plat_psci_ops_t *psci_plat_pm_ops;
 extern non_cpu_pd_node_t psci_non_cpu_pd_nodes[PSCI_NUM_NON_CPU_PWR_DOMAINS];
 extern cpu_pd_node_t psci_cpu_pd_nodes[PLATFORM_CORE_COUNT];
-extern unsigned int psci_caps;
+extern uint32_t psci_caps;
 
 /* One lock is required per non-CPU power domain node */
 DECLARE_PSCI_LOCK(psci_locks[PSCI_NUM_NON_CPU_PWR_DOMAINS]);
@@ -197,76 +198,78 @@ extern const spd_pm_ops_t *psci_spd_pm;
  * Function prototypes
  ******************************************************************************/
 /* Private exported functions from psci_common.c */
-int psci_validate_power_state(unsigned int power_state,
+int32_t psci_validate_power_state(uint32_t power_state,
 			      psci_power_state_t *state_info);
 void psci_query_sys_suspend_pwrstate(psci_power_state_t *state_info);
-int psci_validate_mpidr(u_register_t mpidr);
 void psci_init_req_local_pwr_states(void);
-void psci_get_target_local_pwr_states(unsigned int end_pwrlvl,
+void psci_get_target_local_pwr_states(uint32_t end_pwrlvl,
 				      psci_power_state_t *target_state);
-int psci_validate_entry_point(entry_point_info_t *ep,
+int32_t psci_validate_entry_point(entry_point_info_t *ep,
 			uintptr_t entrypoint, u_register_t context_id);
-void psci_get_parent_pwr_domain_nodes(unsigned int cpu_idx,
-				      unsigned int end_lvl,
-				      unsigned int node_index[]);
-void psci_do_state_coordination(unsigned int end_pwrlvl,
+void psci_get_parent_pwr_domain_nodes(uint32_t cpu_idx,
+				      uint32_t end_lvl,
+				      uint32_t node_index[]);
+void psci_do_state_coordination(uint32_t end_pwrlvl,
 				psci_power_state_t *state_info);
-void psci_acquire_pwr_domain_locks(unsigned int end_pwrlvl,
-				   unsigned int cpu_idx);
-void psci_release_pwr_domain_locks(unsigned int end_pwrlvl,
-				   unsigned int cpu_idx);
-int psci_validate_suspend_req(const psci_power_state_t *state_info,
-			      unsigned int is_power_down_state_req);
-unsigned int psci_find_max_off_lvl(const psci_power_state_t *state_info);
-unsigned int psci_find_target_suspend_lvl(const psci_power_state_t *state_info);
-void psci_set_pwr_domains_to_run(unsigned int end_pwrlvl);
+void psci_acquire_pwr_domain_locks(uint32_t end_pwrlvl,
+				   uint32_t cpu_idx);
+void psci_release_pwr_domain_locks(uint32_t end_pwrlvl,
+				   uint32_t cpu_idx);
+int32_t psci_validate_suspend_req(const psci_power_state_t *state_info,
+			      uint32_t is_power_down_state);
+uint32_t psci_find_max_off_lvl(const psci_power_state_t *state_info);
+uint32_t psci_find_target_suspend_lvl(const psci_power_state_t *state_info);
+void psci_set_pwr_domains_to_run(uint32_t end_pwrlvl);
 void psci_print_power_domain_map(void);
-unsigned int psci_is_last_on_cpu(void);
-int psci_spd_migrate_info(u_register_t *mpidr);
-void psci_do_pwrdown_sequence(unsigned int power_level);
+uint32_t psci_is_last_on_cpu(void);
+int32_t psci_spd_migrate_info(u_register_t *mpidr);
+void psci_do_pwrdown_sequence(uint32_t power_level);
 
+#if HW_ASSISTED_COHERENCY
 /*
  * CPU power down is directly called only when HW_ASSISTED_COHERENCY is
  * available. Otherwise, this needs post-call stack maintenance, which is
  * handled in assembly.
  */
-void prepare_cpu_pwr_dwn(unsigned int power_level);
+void prepare_cpu_pwr_dwn(uint32_t power_level);
+#endif
 
 /* Private exported functions from psci_on.c */
-int psci_cpu_on_start(u_register_t target_cpu,
+int32_t psci_cpu_on_start(u_register_t target_cpu,
 		      entry_point_info_t *ep);
 
-void psci_cpu_on_finish(unsigned int cpu_idx,
+void psci_cpu_on_finish(uint32_t cpu_idx,
 			psci_power_state_t *state_info);
 
 /* Private exported functions from psci_off.c */
-int psci_do_cpu_off(unsigned int end_pwrlvl);
+int32_t psci_do_cpu_off(uint32_t end_pwrlvl);
 
 /* Private exported functions from psci_suspend.c */
 void psci_cpu_suspend_start(entry_point_info_t *ep,
-			unsigned int end_pwrlvl,
+			uint32_t end_pwrlvl,
 			psci_power_state_t *state_info,
-			unsigned int is_power_down_state_req);
+			uint32_t is_power_down_state);
 
-void psci_cpu_suspend_finish(unsigned int cpu_idx,
+void psci_cpu_suspend_finish(uint32_t cpu_idx,
 			psci_power_state_t *state_info);
 
 /* Private exported functions from psci_helpers.S */
-void psci_do_pwrdown_cache_maintenance(unsigned int pwr_level);
+void psci_do_pwrdown_cache_maintenance(uint32_t pwr_level);
 void psci_do_pwrup_cache_maintenance(void);
 
 /* Private exported functions from psci_system_off.c */
 void __dead2 psci_system_off(void);
 void __dead2 psci_system_reset(void);
 
+#if defined(ENABLE_PSCI_STAT) && (ENABLE_PSCI_STAT == 1)
 /* Private exported functions from psci_stat.c */
-void psci_stats_update_pwr_down(unsigned int end_pwrlvl,
+void psci_stats_update_pwr_down(uint32_t end_pwrlvl,
 			const psci_power_state_t *state_info);
-void psci_stats_update_pwr_up(unsigned int end_pwrlvl,
+void psci_stats_update_pwr_up(uint32_t end_pwrlvl,
 			const psci_power_state_t *state_info);
 u_register_t psci_stat_residency(u_register_t target_cpu,
-			unsigned int power_state);
+			uint32_t power_state);
 u_register_t psci_stat_count(u_register_t target_cpu,
-			unsigned int power_state);
-
-#endif /* __PSCI_PRIVATE_H__ */
+			uint32_t power_state);
+#endif
+#endif /* PSCI_PRIVATE_H */

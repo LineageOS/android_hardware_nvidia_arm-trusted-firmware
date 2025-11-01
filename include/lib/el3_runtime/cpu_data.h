@@ -52,7 +52,7 @@
 #define CPU_DATA_PSCI_LOCK_OFFSET	__builtin_offsetof\
 		(cpu_data_t, psci_svc_cpu_data.pcpu_bakery_info)
 
-#if PLAT_PCPU_DATA_SIZE
+#if defined(PLAT_PCPU_DATA_SIZE) && PLAT_PCPU_DATA_SIZE
 #define CPU_DATA_PLAT_PCPU_OFFSET	__builtin_offsetof\
 		(cpu_data_t, platform_cpu_data)
 #endif
@@ -86,7 +86,7 @@ typedef struct cpu_data {
 	uint64_t cpu_data_pmf_ts[CPU_DATA_PMF_TS_COUNT];
 #endif
 	struct psci_cpu_data psci_svc_cpu_data;
-#if PLAT_PCPU_DATA_SIZE
+#if defined(PLAT_PCPU_DATA_SIZE) && PLAT_PCPU_DATA_SIZE
 	uint8_t platform_cpu_data[PLAT_PCPU_DATA_SIZE];
 #endif
 } __aligned(CACHE_WRITEBACK_GRANULE) cpu_data_t;
@@ -131,20 +131,20 @@ void init_cpu_data_ptr(void);
 void init_cpu_ops(void);
 
 #define get_cpu_data(_m)		   _cpu_data()->_m
-#define set_cpu_data(_m, _v)		   _cpu_data()->_m = _v
+#define set_cpu_data(_m, _v)		   _cpu_data()->_m = (_v)
 #define get_cpu_data_by_index(_ix, _m)	   _cpu_data_by_index(_ix)->_m
-#define set_cpu_data_by_index(_ix, _m, _v) _cpu_data_by_index(_ix)->_m = _v
+#define set_cpu_data_by_index(_ix, _m, _v) _cpu_data_by_index(_ix)->_m = (_v)
 
 #define flush_cpu_data(_m)	   flush_dcache_range((uintptr_t)	  \
 						      &(_cpu_data()->_m), \
-						      sizeof(_cpu_data()->_m))
+						      sizeof(((cpu_data_t *)(void *)0)->_m))
 #define inv_cpu_data(_m)	   inv_dcache_range((uintptr_t)	  	  \
 						      &(_cpu_data()->_m), \
-						      sizeof(_cpu_data()->_m))
+						      sizeof(((cpu_data_t *)(void *)0)->_m))
 #define flush_cpu_data_by_index(_ix, _m)	\
 				   flush_dcache_range((uintptr_t)	  \
 					 &(_cpu_data_by_index(_ix)->_m),  \
-					 sizeof(_cpu_data_by_index(_ix)->_m))
+					 sizeof(((cpu_data_t *)(void *)0)->_m))
 
 
 #endif /* __ASSEMBLY__ */

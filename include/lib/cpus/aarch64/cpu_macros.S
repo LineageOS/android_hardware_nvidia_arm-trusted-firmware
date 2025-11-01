@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2014-2022, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -18,6 +18,10 @@
 /* Special constant to specify that CPU has no reset function */
 #define CPU_NO_RESET_FUNC		0
 
+#define CPU_NO_EXTRA1_FUNC		0
+#define CPU_NO_EXTRA2_FUNC		0
+#define CPU_NO_EXTRA3_FUNC		0
+
 /* Word size for 64-bit CPUs */
 #define CPU_WORD_SIZE			8
 
@@ -31,42 +35,55 @@
 # define REPORT_ERRATA	0
 #endif
 
-	/*
-	 * Define the offsets to the fields in cpu_ops structure.
-	 */
-	.struct 0
-CPU_MIDR: /* cpu_ops midr */
-	.space  8
-/* Reset fn is needed in BL at reset vector */
-#if defined(IMAGE_BL1) || defined(IMAGE_BL31)
-CPU_RESET_FUNC: /* cpu_ops reset_func */
-	.space  8
+	.equ	CPU_MIDR_SIZE, CPU_WORD_SIZE
+	.equ	CPU_EXTRA1_FUNC_SIZE, CPU_WORD_SIZE
+	.equ	CPU_EXTRA2_FUNC_SIZE, CPU_WORD_SIZE
+	.equ	CPU_EXTRA3_FUNC_SIZE, CPU_WORD_SIZE
+	.equ	CPU_E_HANDLER_FUNC_SIZE, CPU_WORD_SIZE
+	.equ	CPU_RESET_FUNC_SIZE, CPU_WORD_SIZE
+	.equ	CPU_PWR_DWN_OPS_SIZE, CPU_WORD_SIZE * CPU_MAX_PWR_DWN_OPS
+	.equ	CPU_ERRATA_FUNC_SIZE, CPU_WORD_SIZE
+	.equ	CPU_ERRATA_LOCK_SIZE, CPU_WORD_SIZE
+	.equ	CPU_ERRATA_PRINTED_SIZE, CPU_WORD_SIZE
+	.equ	CPU_REG_DUMP_SIZE, CPU_WORD_SIZE
+
+/* The power down core and cluster is needed only in BL31 */
+#ifndef IMAGE_BL31
+	.equ	CPU_PWR_DWN_OPS_SIZE, 0
 #endif
-#ifdef IMAGE_BL31 /* The power down core and cluster is needed only in BL31 */
-CPU_PWR_DWN_OPS: /* cpu_ops power down functions */
-	.space  (8 * CPU_MAX_PWR_DWN_OPS)
+
+/* Fields required to print errata status. */
+#if !REPORT_ERRATA
+	.equ	CPU_ERRATA_FUNC_SIZE, 0
+#endif
+
+/* Only BL31 requieres mutual exclusion and printed flag.  */
+#if !(REPORT_ERRATA && defined(IMAGE_BL31))
+	.equ	CPU_ERRATA_LOCK_SIZE, 0
+	.equ	CPU_ERRATA_PRINTED_SIZE, 0
+#endif
+
+#if !defined(IMAGE_BL31) || !CRASH_REPORTING
+	.equ	CPU_REG_DUMP_SIZE, 0
 #endif
 
 /*
- * Fields required to print errata status. Only in BL31 that the printing
- * require mutual exclusion and printed flag.
+ * Define the offsets to the fields in cpu_ops structure.
+ * Every offset is defined based in the offset and size of the previous
+ * field.
  */
-#if REPORT_ERRATA
-CPU_ERRATA_FUNC:
-	.space	8
-#ifdef IMAGE_BL31
-CPU_ERRATA_LOCK:
-	.space	8
-CPU_ERRATA_PRINTED:
-	.space	8
-#endif
-#endif
-
-#if defined(IMAGE_BL31) && CRASH_REPORTING
-CPU_REG_DUMP: /* cpu specific register dump for crash reporting */
-	.space  8
-#endif
-CPU_OPS_SIZE = .
+	.equ	CPU_MIDR, 0
+	.equ	CPU_RESET_FUNC, CPU_MIDR + CPU_MIDR_SIZE
+	.equ	CPU_EXTRA1_FUNC, CPU_RESET_FUNC + CPU_RESET_FUNC_SIZE
+	.equ	CPU_EXTRA2_FUNC, CPU_EXTRA1_FUNC + CPU_EXTRA1_FUNC_SIZE
+	.equ	CPU_EXTRA3_FUNC, CPU_EXTRA2_FUNC + CPU_EXTRA2_FUNC_SIZE
+	.equ	CPU_E_HANDLER_FUNC, CPU_EXTRA3_FUNC + CPU_EXTRA3_FUNC_SIZE
+	.equ	CPU_PWR_DWN_OPS, CPU_E_HANDLER_FUNC + CPU_E_HANDLER_FUNC_SIZE
+	.equ	CPU_ERRATA_FUNC, CPU_PWR_DWN_OPS + CPU_PWR_DWN_OPS_SIZE
+	.equ	CPU_ERRATA_LOCK, CPU_ERRATA_FUNC + CPU_ERRATA_FUNC_SIZE
+	.equ	CPU_ERRATA_PRINTED, CPU_ERRATA_LOCK + CPU_ERRATA_LOCK_SIZE
+	.equ	CPU_REG_DUMP, CPU_ERRATA_PRINTED + CPU_ERRATA_PRINTED_SIZE
+	.equ	CPU_OPS_SIZE, CPU_REG_DUMP + CPU_REG_DUMP_SIZE
 
 	/*
 	 * Write given expressions as quad words
@@ -109,6 +126,20 @@ CPU_OPS_SIZE = .
 	 * _resetfunc:
 	 *	Reset function for the CPU. If there's no CPU reset function,
 	 *	specify CPU_NO_RESET_FUNC
+	 * _extra1:
+	 *	This is a placeholder for future per CPU operations.  Currently,
+	 *	some CPUs use this entry to set a test function to determine if
+	 *	the workaround for CVE-2017-5715 needs to be applied or not.
+	 * _extra2:
+	 *	This is a placeholder for future per CPU operations. Currently
+	 *	some CPUs use this entry to set a function to disable the
+	 *	workaround for CVE-2018-3639.
+	 * _extra3:
+	 *	This is a placeholder for future per CPU operations. Currently,
+	 *	some CPUs use this entry to set a test function to determine if
+	 *	the workaround for CVE-2022-23960 needs to be applied or not.
+	 * _e_handler:
+	 *	This is a placeholder for future per CPU exception handlers.
 	 * _power_down_ops:
 	 *	Comma-separated list of functions to perform power-down
 	 *	operatios on the CPU. At least one, and up to
@@ -118,8 +149,8 @@ CPU_OPS_SIZE = .
 	 *	CPU_MAX_PWR_DWN_OPS functions, the last specified one will be
 	 *	used to handle power down at subsequent levels
 	 */
-	.macro declare_cpu_ops _name:req, _midr:req, _resetfunc:req, \
-		_power_down_ops:vararg
+	.macro declare_cpu_ops_base _name:req, _midr:req, _resetfunc:req, \
+		_extra1:req, _extra2:req, _extra3:req, _e_handler:req, _power_down_ops:vararg
 	.section cpu_ops, "a"
 	.align 3
 	.type cpu_ops_\_name, %object
@@ -127,22 +158,13 @@ CPU_OPS_SIZE = .
 #if defined(IMAGE_BL1) || defined(IMAGE_BL31)
 	.quad \_resetfunc
 #endif
+	.quad \_extra1
+	.quad \_extra2
+	.quad \_extra3
+	.quad \_e_handler
 #ifdef IMAGE_BL31
-1:
 	/* Insert list of functions */
 	fill_constants CPU_MAX_PWR_DWN_OPS, \_power_down_ops
-2:
-	/*
-	 * Error if no or more than CPU_MAX_PWR_DWN_OPS were specified in the
-	 * list
-	 */
-	.ifeq 2b - 1b
-	  .error "At least one power down function must be specified"
-	.else
-	  .iflt 2b - 1b - (CPU_MAX_PWR_DWN_OPS * CPU_WORD_SIZE)
-	    .error "More than CPU_MAX_PWR_DWN_OPS functions specified"
-	  .endif
-	.endif
 #endif
 
 #if REPORT_ERRATA
@@ -181,6 +203,25 @@ CPU_OPS_SIZE = .
 #if defined(IMAGE_BL31) && CRASH_REPORTING
 	.quad \_name\()_cpu_reg_dump
 #endif
+	.endm
+
+	.macro declare_cpu_ops _name:req, _midr:req, _resetfunc:req, \
+		_power_down_ops:vararg
+		declare_cpu_ops_base \_name, \_midr, \_resetfunc, 0, 0, 0, 0, \
+			\_power_down_ops
+	.endm
+
+	.macro declare_cpu_ops_eh _name:req, _midr:req, _resetfunc:req, \
+		_e_handler:req, _power_down_ops:vararg
+		declare_cpu_ops_base \_name, \_midr, \_resetfunc, \
+			0, 0, 0, \_e_handler, \_power_down_ops
+	.endm
+
+	.macro declare_cpu_ops_wa _name:req, _midr:req, \
+		_resetfunc:req, _extra1:req, _extra2:req, \
+		_extra3:req, _power_down_ops:vararg
+		declare_cpu_ops_base \_name, \_midr, \_resetfunc, \
+			\_extra1, \_extra2, \_extra3, 0, \_power_down_ops
 	.endm
 
 #if REPORT_ERRATA

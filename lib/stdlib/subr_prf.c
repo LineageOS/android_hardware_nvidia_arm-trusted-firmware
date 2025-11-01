@@ -35,10 +35,11 @@
  */
 
 /*
- * Portions copyright (c) 2009-2014, ARM Limited and Contributors.
+ * Portions copyright (c) 2009-2017, ARM Limited and Contributors.
  * All rights reserved.
  */
 
+#include <limits.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdarg.h>
@@ -84,11 +85,12 @@ struct snprintf_arg {
 
 extern	int log_open;
 
-static char *ksprintn(char *nbuf, uintmax_t num, int base, int *len, int upper);
+static char *ksprintn(char *nbuf, uintmax_t num, int base, int *lenp, int upper);
 static void  snprintf_func(int ch, void *arg);
 static int kvprintf(char const *fmt, void (*func)(int, void*), void *arg, int radix, va_list ap);
 
 int vsnprintf(char *str, size_t size, const char *format, va_list ap);
+int vsnrprintf(char *str, size_t size, int radix, const char *format, va_list ap);
 
 static char const hex2ascii_data[] = "0123456789abcdefghijklmnopqrstuvwxyz";
 #define hex2ascii(hex) (hex2ascii_data[hex])
@@ -149,8 +151,9 @@ vsnprintf(char *str, size_t size, const char *format, va_list ap)
 	info.str = str;
 	info.remain = size;
 	retval = kvprintf(format, snprintf_func, &info, 10, ap);
-	if (info.remain >= 1)
+	if (info.remain >= 1U) {
 		*info.str++ = '\0';
+	}
 	return (retval);
 }
 
@@ -159,8 +162,8 @@ snprintf_func(int ch, void *arg)
 {
 	struct snprintf_arg *const info = arg;
 
-	if (info->remain >= 2) {
-		*info->str++ = ch;
+	if (info->remain >= 2U) {
+		*info->str++ = (char)ch;
 		info->remain--;
 	}
 }
@@ -178,8 +181,9 @@ vsnrprintf(char *str, size_t size, int radix, const char *format, va_list ap)
 	info.str = str;
 	info.remain = size;
 	retval = kvprintf(format, snprintf_func, &info, radix, ap);
-	if (info.remain >= 1)
+	if (info.remain >= 1U) {
 		*info.str++ = '\0';
+	}
 	return (retval);
 }
 
@@ -198,11 +202,12 @@ ksprintn(char *nbuf, uintmax_t num, int base, int *lenp, int upper)
 	p = nbuf;
 	*p = '\0';
 	do {
-		c = hex2ascii(num % base);
-		*++p = upper ? toupper(c) : c;
-	} while (num /= base);
-	if (lenp)
-		*lenp = p - nbuf;
+		c = hex2ascii(num % (uint64_t)base);
+		*++p = (upper != 0) ? toupper(c) : c;
+	} while ((num /= (uint64_t)base) != 0U);
+	if (lenp != NULL) {
+		*lenp = (int)(p - nbuf);
+	}
 	return (p);
 }
 
@@ -232,47 +237,50 @@ ksprintn(char *nbuf, uintmax_t num, int base, int *lenp, int upper)
  *		("%6D", ptr, ":")   -> XX:XX:XX:XX:XX:XX
  *		("%*D", len, ptr, " " -> XX XX XX XX ...
  */
-int
+static int
 kvprintf(char const *fmt, void (*func)(int, void*), void *arg, int radix, va_list ap)
 {
-#define PCHAR(c) {int cc=(c); if (func) (*func)(cc,arg); else *d++ = cc; retval++; }
+#define PCHAR(c) {char cc=(c); if (func != NULL) {(*func)((int)cc,arg);} else {*d++ = cc;} retval++; }
 	char nbuf[MAXNBUF];
 	char *d;
 	const char *p, *percent, *q;
 	u_char *up;
-	int ch, n;
 	uintmax_t num;
 	int base, lflag, qflag, tmp, width, ladjust, sharpflag, neg, sign, dot;
 	int cflag, hflag, jflag, tflag, zflag;
 	int dwidth, upper;
-	char padc;
-	int stop = 0, retval = 0;
+	char padc, ch;
+	int stop = 0, retval = 0, n = 0;
 
 	num = 0;
-	if (!func)
+	if (func == NULL) {
 		d = (char *) arg;
-	else
+	} else {
 		d = NULL;
+	}
 
-	if (fmt == NULL)
+	if (fmt == NULL) {
 		fmt = "(fmt null)\n";
+	}
 
-	if (radix < 2 || radix > 36)
+	if ((radix < 2) || (radix > 36)) {
 		radix = 10;
+	}
 
 	for (;;) {
 		padc = ' ';
 		width = 0;
-		while ((ch = (u_char)*fmt++) != '%' || stop) {
-			if (ch == '\0')
+		while (((ch = *fmt++) != '%') || (stop != 0)) {
+			if (ch == '\0') {
 				return (retval);
+			}
 			PCHAR(ch);
 		}
 		percent = fmt - 1;
 		qflag = 0; lflag = 0; ladjust = 0; sharpflag = 0; neg = 0;
 		sign = 0; dot = 0; dwidth = 0; upper = 0;
 		cflag = 0; hflag = 0; jflag = 0; tflag = 0; zflag = 0;
-reswitch:	switch (ch = (u_char)*fmt++) {
+reswitch:	switch (ch = *fmt++) {
 		case '.':
 			dot = 1;
 			goto reswitch;
@@ -289,10 +297,10 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 			PCHAR(ch);
 			break;
 		case '*':
-			if (!dot) {
+			if (dot == 0) {
 				width = va_arg(ap, int);
 				if (width < 0) {
-					ladjust = !ladjust;
+					ladjust = (ladjust == 0) ? 1 : 0;
 					width = -width;
 				}
 			} else {
@@ -300,61 +308,74 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 			}
 			goto reswitch;
 		case '0':
-			if (!dot) {
-				padc = '0';
-				goto reswitch;
-			}
 		case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7': case '8': case '9':
-				for (n = 0;; ++fmt) {
-					n = n * 10 + ch - '0';
-					ch = *fmt;
-					if (ch < '0' || ch > '9')
-						break;
+			if ((ch == '0') && (dot == 0)) {
+					padc = '0';
+					goto reswitch;
+			}
+
+			for (; *fmt != '\0'; ++fmt) {
+				n = n * 10 + ch - '0';
+				ch = *fmt;
+				if (ch < '0' || ch > '9') {
+					break;
 				}
-			if (dot)
+			}
+
+			if (dot != 0) {
 				dwidth = n;
-			else
+			} else {
 				width = n;
+			}
 			goto reswitch;
 		case 'b':
-			num = (u_int)va_arg(ap, int);
+			num = (uintmax_t)(u_int)va_arg(ap, int);
 			p = va_arg(ap, char *);
-			for (q = ksprintn(nbuf, num, *p++, NULL, 0); *q;)
-				PCHAR(*q--);
-
-			if (num == 0)
-				break;
-
-			for (tmp = 0; *p;) {
-				n = *p++;
-				if (num & (1 << (n - 1))) {
-					PCHAR(tmp ? ',' : '<');
-					for (; (n = *p) > ' '; ++p)
-						PCHAR(n);
-					tmp = 1;
-				} else
-					for (; *p > ' '; ++p)
-						continue;
+			for (q = ksprintn(nbuf, num, (int)*p++, NULL, 0); *q != '\0'; q--) {
+				PCHAR(*q);
 			}
-			if (tmp)
+
+			if (num == 0ULL) {
+				break;
+			}
+
+			for (tmp = 0; *p != '\0';) {
+				n = (int)*p++;
+				if ((num & (1ULL << ((uint64_t)n - 1U))) != 0ULL) {
+					PCHAR((tmp != 0) ? ',' : '<');
+					for (; ((n = (int32_t)*p) > (int32_t)' '); ++p) {
+						PCHAR((char)n);
+					}
+					tmp = 1;
+				} else {
+					for (; *p > ' '; ++p) {
+						continue;
+					}
+				}
+			}
+			if (tmp != 0) {
 				PCHAR('>');
+			}
 			break;
 		case 'c':
-			PCHAR(va_arg(ap, int));
+			PCHAR((char)va_arg(ap, int));
 			break;
 		case 'D':
 			up = va_arg(ap, u_char *);
 			p = va_arg(ap, char *);
-			if (!width)
+			if (width == 0) {
 				width = 16;
-			while(width--) {
-				PCHAR(hex2ascii(*up >> 4));
-				PCHAR(hex2ascii(*up & 0x0f));
+			}
+			while(width-- != 0) {
+				PCHAR(hex2ascii(*up >> 4U));
+				PCHAR(hex2ascii(*up & 0x0fU));
 				up++;
-				if (width)
-					for (q=p;*q;q++)
+				if (width != 0) {
+					for (q=p;*q != '\0';q++) {
 						PCHAR(*q);
+					}
+				}
 			}
 			break;
 		case 'd':
@@ -363,44 +384,47 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 			sign = 1;
 			goto handle_sign;
 		case 'h':
-			if (hflag) {
+			if (hflag != 0) {
 				hflag = 0;
 				cflag = 1;
-			} else
+			} else {
 				hflag = 1;
+			}
 			goto reswitch;
 		case 'j':
 			jflag = 1;
 			goto reswitch;
 		case 'l':
-			if (lflag) {
+			if (lflag != 0) {
 				lflag = 0;
 				qflag = 1;
-			} else
+			} else {
 				lflag = 1;
+			}
 			goto reswitch;
 		case 'n':
-			if (jflag)
+			if (jflag != 0) {
 				*(va_arg(ap, intmax_t *)) = retval;
-			else if (qflag)
+			} else if (qflag != 0) {
 				*(va_arg(ap, quad_t *)) = retval;
-			else if (lflag)
+			} else if (lflag != 0) {
 				*(va_arg(ap, long *)) = retval;
-			else if (zflag)
-				*(va_arg(ap, size_t *)) = retval;
-			else if (hflag)
-				*(va_arg(ap, short *)) = retval;
-			else if (cflag)
-				*(va_arg(ap, char *)) = retval;
-			else
+			} else if (zflag != 0) {
+				*(va_arg(ap, size_t *)) = (size_t)retval;
+			} else if (hflag != 0) {
+				*(va_arg(ap, short *)) = (int16_t)retval;
+			} else if (cflag != 0) {
+				*(va_arg(ap, char *)) = (char)retval;
+			} else {
 				*(va_arg(ap, int *)) = retval;
+			}
 			break;
 		case 'o':
 			base = 8;
 			goto handle_nosign;
 		case 'p':
 			base = 16;
-			sharpflag = (width == 0);
+			sharpflag = (width == 0) ? 1 : 0;
 			sign = 0;
 			num = (uintptr_t)va_arg(ap, void *);
 			goto number;
@@ -409,29 +433,40 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 			goto reswitch;
 		case 'r':
 			base = radix;
-			if (sign)
+			if (sign != 0) {
 				goto handle_sign;
+			}
 			goto handle_nosign;
 		case 's':
 			p = va_arg(ap, char *);
-			if (p == NULL)
+			if (p == NULL) {
 				p = "(null)";
-			if (!dot)
-				n = strlen (p);
-			else
-				for (n = 0; n < dwidth && p[n]; n++)
+			}
+
+			if (dot == 0) {
+				n = (int32_t)strnlen(p, UINT_MAX);
+			}
+			else {
+				for (n = 0; (n < dwidth) && (p[n] != '\0'); n++) {
 					continue;
+				}
+			}
 
 			width -= n;
 
-			if (!ladjust && width > 0)
-				while (width--)
+			if ((ladjust == 0) && (width > 0)) {
+				while (width-- != 0) {
 					PCHAR(padc);
-			while (n--)
+				}
+			}
+			while (n-- != 0) {
 				PCHAR(*p++);
-			if (ladjust && width > 0)
-				while (width--)
+			}
+			if ((ladjust != 0) && (width > 0)) {
+				while (width-- != 0) {
 					PCHAR(padc);
+				}
+			}
 			break;
 		case 't':
 			tflag = 1;
@@ -440,8 +475,10 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 			base = 10;
 			goto handle_nosign;
 		case 'X':
-			upper = 1;
 		case 'x':
+			if (ch == 'X') {
+				upper = 1;
+			}
 			base = 16;
 			goto handle_nosign;
 		case 'y':
@@ -453,89 +490,106 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 			goto reswitch;
 handle_nosign:
 			sign = 0;
-			if (jflag)
-				num = va_arg(ap, uintmax_t);
-			else if (qflag)
-				num = va_arg(ap, u_quad_t);
-			else if (tflag)
-				num = va_arg(ap, ptrdiff_t);
-			else if (lflag)
-				num = va_arg(ap, u_long);
-			else if (zflag)
-				num = va_arg(ap, size_t);
-			else if (hflag)
-				num = (u_short)va_arg(ap, int);
-			else if (cflag)
-				num = (u_char)va_arg(ap, int);
-			else
-				num = va_arg(ap, u_int);
+			if (jflag != 0) {
+				num = (uintmax_t)va_arg(ap, uintmax_t);
+			} else if (qflag != 0) {
+				num = (uintmax_t)va_arg(ap, u_quad_t);
+			} else if (tflag != 0) {
+				num = (uintmax_t)va_arg(ap, ptrdiff_t);
+			} else if (lflag != 0) {
+				num = (uintmax_t)va_arg(ap, u_long);
+			} else if (zflag != 0) {
+				num = (uintmax_t)va_arg(ap, size_t);
+			} else if (hflag != 0) {
+				num = (uintmax_t)(u_short)va_arg(ap, int);
+			} else if (cflag != 0) {
+				num = (uintmax_t)(u_char)va_arg(ap, int);
+			} else {
+				num = (uintmax_t)va_arg(ap, u_int);
+			}
 			goto number;
 handle_sign:
-			if (jflag)
-				num = va_arg(ap, intmax_t);
-			else if (qflag)
-				num = va_arg(ap, quad_t);
-			else if (tflag)
-				num = va_arg(ap, ptrdiff_t);
-			else if (lflag)
-				num = va_arg(ap, long);
-			else if (zflag)
-				num = va_arg(ap, ssize_t);
-			else if (hflag)
-				num = (short)va_arg(ap, int);
-			else if (cflag)
-				num = (char)va_arg(ap, int);
-			else
-				num = va_arg(ap, int);
+			if (jflag != 0) {
+				num = (uintmax_t)va_arg(ap, intmax_t);
+			} else if (qflag != 0) {
+				num = (uintmax_t)va_arg(ap, quad_t);
+			} else if (tflag != 0) {
+				num = (uintmax_t)va_arg(ap, ptrdiff_t);
+			} else if (lflag != 0) {
+				num = (uintmax_t)va_arg(ap, long);
+			} else if (zflag != 0) {
+				num = (uintmax_t)va_arg(ap, ssize_t);
+			} else if (hflag != 0) {
+				num = (uintmax_t)(short)va_arg(ap, int);
+			} else if (cflag != 0) {
+				num = (uintmax_t)(char)va_arg(ap, int);
+			} else {
+				num = (uintmax_t)va_arg(ap, int);
+			}
 number:
-			if (sign && (intmax_t)num < 0) {
+			if ((sign != 0) && ((intmax_t)num < 0)) {
 				neg = 1;
-				num = -(intmax_t)num;
+				num = (uintmax_t)(-(intmax_t)num);
 			}
 			p = ksprintn(nbuf, num, base, &n, upper);
 			tmp = 0;
-			if (sharpflag && num != 0) {
-				if (base == 8)
+			if ((sharpflag != 0) && (num != 0ULL)) {
+				if (base == 8) {
 					tmp++;
-				else if (base == 16)
+				} else if (base == 16) {
 					tmp += 2;
+				} else {
+					; /* do nothing */
+				}
 			}
-			if (neg)
+			if (neg != 0) {
 				tmp++;
+			}
 
-			if (!ladjust && padc == '0')
+			if ((ladjust == 0) && (padc == '0')) {
 				dwidth = width - tmp;
+			}
 			width -= tmp + imax(dwidth, n);
 			dwidth -= n;
-			if (!ladjust)
-				while (width-- > 0)
+			if (ladjust == 0) {
+				while (width-- > 0) {
 					PCHAR(' ');
-			if (neg)
+				}
+			}
+			if (neg != 0) {
 				PCHAR('-');
-			if (sharpflag && num != 0) {
+			}
+			if ((sharpflag != 0) && (num != 0U)) {
 				if (base == 8) {
 					PCHAR('0');
 				} else if (base == 16) {
 					PCHAR('0');
 					PCHAR('x');
+				} else {
+					; /* do nothing */
 				}
 			}
-			while (dwidth-- > 0)
+			while (dwidth-- > 0) {
 				PCHAR('0');
+			}
 
-			while (*p)
+			while (*p != '\0') {
 				PCHAR(*p--);
+			}
 
-			if (ladjust)
-				while (width-- > 0)
+			if (ladjust != 0) {
+				while (width-- > 0) {
 					PCHAR(' ');
+				}
+			}
 
 			break;
 		default:
-			while (percent < fmt)
+			while (percent < fmt) {
 				PCHAR(*percent++);
+			}
 			/*
-			 * Since we ignore an formatting argument it is no 
+			 * Since we ignore an formatting argument it is no
 			 * longer safe to obey the remaining formatting
 			 * arguments as the arguments will no longer match
 			 * the format specs.

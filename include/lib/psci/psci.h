@@ -29,7 +29,7 @@
 					 PLATFORM_CORE_COUNT)
 
 /* This is the power level corresponding to a CPU */
-#define PSCI_CPU_PWR_LVL	(0)
+#define PSCI_CPU_PWR_LVL	U(0)
 
 /*
  * The maximum power level supported by PSCI. Since PSCI CPU_SUSPEND
@@ -67,7 +67,7 @@
 #define PSCI_STAT_COUNT_AARCH64		U(0xc4000011)
 
 /* Macro to help build the psci capabilities bitfield */
-#define define_psci_cap(x)		(U(1) << (x & U(0x1f)))
+#define define_psci_cap(x)		((uint32_t)1 << ((x) & U(0x1f)))
 
 /*
  * Number of PSCI calls (above) implemented
@@ -265,7 +265,7 @@ typedef struct psci_cpu_data {
  ******************************************************************************/
 typedef struct plat_psci_ops {
 	void (*cpu_standby)(plat_local_state_t cpu_state);
-	int (*pwr_domain_on)(u_register_t mpidr);
+	int32_t (*pwr_domain_on)(u_register_t mpidr);
 	void (*pwr_domain_off)(const psci_power_state_t *target_state);
 	void (*pwr_domain_suspend)(const psci_power_state_t *target_state);
 	void (*pwr_domain_on_finish)(const psci_power_state_t *target_state);
@@ -275,39 +275,39 @@ typedef struct plat_psci_ops {
 				const psci_power_state_t *target_state) __dead2;
 	void (*system_off)(void) __dead2;
 	void (*system_reset)(void) __dead2;
-	int (*validate_power_state)(unsigned int power_state,
+	int32_t (*validate_power_state)(uint32_t power_state,
 				    psci_power_state_t *req_state);
-	int (*validate_ns_entrypoint)(uintptr_t ns_entrypoint);
+	int32_t (*validate_ns_entrypoint)(uintptr_t ns_entrypoint);
 	void (*get_sys_suspend_power_state)(
 				    psci_power_state_t *req_state);
-	int (*get_pwr_lvl_state_idx)(plat_local_state_t pwr_domain_state,
-				    int pwrlvl);
-	int (*translate_power_state_by_mpidr)(u_register_t mpidr,
-				    unsigned int power_state,
+	int32_t (*get_pwr_lvl_state_idx)(plat_local_state_t pwr_domain_state,
+				    int32_t pwrlvl);
+	int32_t (*translate_power_state_by_mpidr)(u_register_t mpidr,
+				    uint32_t power_state,
 				    psci_power_state_t *output_state);
-	int (*get_node_hw_state)(u_register_t mpidr, unsigned int power_level);
+	int32_t (*get_node_hw_state)(u_register_t mpidr, uint32_t power_level);
 } plat_psci_ops_t;
 
 /*******************************************************************************
  * Function & Data prototypes
  ******************************************************************************/
-unsigned int psci_version(void);
-int psci_cpu_on(u_register_t target_cpu,
+uint32_t psci_version(void);
+int32_t psci_cpu_on(u_register_t target_cpu,
 		uintptr_t entrypoint,
 		u_register_t context_id);
-int psci_cpu_suspend(unsigned int power_state,
+int32_t psci_cpu_suspend(uint32_t power_state,
 		     uintptr_t entrypoint,
 		     u_register_t context_id);
-int psci_system_suspend(uintptr_t entrypoint, u_register_t context_id);
-int psci_cpu_off(void);
-int psci_affinity_info(u_register_t target_affinity,
-		       unsigned int lowest_affinity_level);
-int psci_migrate(u_register_t target_cpu);
-int psci_migrate_info_type(void);
-long psci_migrate_info_up_cpu(void);
-int psci_node_hw_state(u_register_t target_cpu,
-		       unsigned int power_level);
-int psci_features(unsigned int psci_fid);
+int32_t psci_system_suspend(uintptr_t entrypoint, u_register_t context_id);
+int32_t psci_cpu_off(void);
+int32_t psci_affinity_info(u_register_t target_affinity,
+		       uint32_t lowest_affinity_level);
+int32_t psci_migrate(u_register_t target_cpu);
+int32_t psci_migrate_info_type(void);
+int64_t psci_migrate_info_up_cpu(void);
+int32_t psci_node_hw_state(u_register_t target_cpu,
+		       uint32_t power_level);
+int32_t psci_features(uint32_t psci_fid);
 void __dead2 psci_power_down_wfi(void);
 void psci_arch_setup(void);
 

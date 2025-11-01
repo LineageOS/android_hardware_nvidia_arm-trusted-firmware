@@ -49,20 +49,20 @@ typedef	__size_t	size_t;
 
 __BEGIN_DECLS
 
-void	*memchr(const void *, int, size_t) __pure;
-int	 memcmp(const void *, const void *, size_t) __pure;
+void	*memchr(const void *src, int c, size_t len) __pure;
+int	 memcmp(const void *s1, const void *s2, size_t len) __pure;
 void	*memcpy(void * __restrict, const void * __restrict, size_t);
 void	*memcpy16(void * __restrict, const void * __restrict, size_t);
-void	*memmove(void *, const void *, size_t);
-void	*memset(void *, int, size_t);
+void	*memmove(void *dst, const void *src, size_t len);
+void	*memset(void *dst, int val, size_t count);
 
-char	*strchr(const char *, int) __pure;
-int	 strcmp(const char *, const char *) __pure;
-size_t	 strlen(const char *) __pure;
-int	 strncmp(const char *, const char *, size_t) __pure;
-size_t	 strnlen(const char *, size_t) __pure;
-int	 strcasecmp(const char *, const char *);
-int	 timingsafe_bcmp(const void *, const void *, size_t);
+char	*strchr(const char *p, int ch) __pure;
+int	 strcmp(const char *s1, const char *s2) __pure;
+size_t	 strlen(const char *str) __pure;
+int	 strncmp(const char *s1, const char *s2, size_t n) __pure;
+size_t	 strnlen(const char *s, size_t maxlen) __pure;
+int	 strcasecmp(const char *s1, const char *s2);
+int	 timingsafe_bcmp(const void *b1, const void *b2, size_t n);
 
 __END_DECLS
 

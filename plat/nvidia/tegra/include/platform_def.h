@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2015-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2021, NVIDIA Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -33,29 +34,24 @@
  * Platform console related constants
  ******************************************************************************/
 #define TEGRA_CONSOLE_BAUDRATE		U(115200)
-#define TEGRA_BOOT_UART_CLK_IN_HZ	U(408000000)
+#define TEGRA_BOOT_UART_CLK_13_MHZ	U(13000000)
+#define TEGRA_BOOT_UART_CLK_408_MHZ	U(408000000)
 
 /*******************************************************************************
  * Platform memory map related constants
  ******************************************************************************/
 /* Size of trusted dram */
 #define TZDRAM_SIZE			U(0x00400000)
-#define TZDRAM_END			(TZDRAM_BASE + TZDRAM_SIZE)
+#define TZDRAM_END			(PLAT_BL31_BASE + TZDRAM_SIZE)
 
 /*******************************************************************************
  * BL31 specific defines.
  ******************************************************************************/
 #define BL31_SIZE			U(0x40000)
-#define BL31_BASE			TZDRAM_BASE
-#define BL31_LIMIT			(TZDRAM_BASE + BL31_SIZE - 1)
-#define BL32_BASE			(TZDRAM_BASE + BL31_SIZE)
+#define BL31_BASE			PLAT_BL31_BASE
+#define BL31_LIMIT			(PLAT_BL31_BASE + BL31_SIZE - 1)
+#define BL32_BASE			(PLAT_BL31_BASE + BL31_SIZE)
 #define BL32_LIMIT			TZDRAM_END
-
-/*******************************************************************************
- * Platform specific page table and MMU setup constants
- ******************************************************************************/
-#define PLAT_PHY_ADDR_SPACE_SIZE	(ULL(1) << 35)
-#define PLAT_VIRT_ADDR_SPACE_SIZE	(ULL(1) << 35)
 
 /*******************************************************************************
  * Some data must be aligned on the biggest cache line size in the platform.

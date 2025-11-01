@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __LIB_SM_SM_ERR_H
-#define __LIB_SM_SM_ERR_H
+#ifndef LIB_SM_SM_ERR_H
+#define LIB_SM_SM_ERR_H
 
 /* Errors from the secure monitor */
 #define SM_ERR_UNDEFINED_SMC		0xFFFFFFFF /* Unknown SMC (defined by ARM DEN 0028A(0.9.0) */

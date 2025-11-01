@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2016, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2020, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -15,8 +15,8 @@
 	.global	fpregs_context_restore
 #endif
 	.global	save_gp_registers
+	.global	restore_gp_registers
 	.global	restore_gp_registers_eret
-	.global	restore_gp_registers_callee_eret
 	.global	el3_exit
 
 /* -----------------------------------------------------
@@ -72,6 +72,9 @@ func el1_sysregs_context_save
 	mrs	x17, contextidr_el1
 	mrs	x9, vbar_el1
 	stp	x17, x9, [x0, #CTX_CONTEXTIDR_EL1]
+
+	mrs	x10, pmcr_el0
+	str	x10, [x0, #CTX_PMCR_EL0]
 
 	/* Save AArch32 system registers if the build has instructed so */
 #if CTX_INCLUDE_AARCH32_REGS
@@ -161,6 +164,9 @@ func el1_sysregs_context_restore
 	ldp	x17, x9, [x0, #CTX_CONTEXTIDR_EL1]
 	msr	contextidr_el1, x17
 	msr	vbar_el1, x9
+
+	ldr	x10, [x0, #CTX_PMCR_EL0]
+	msr	pmcr_el0, x10
 
 	/* Restore AArch32 system registers if the build has instructed so */
 #if CTX_INCLUDE_AARCH32_REGS
@@ -324,30 +330,40 @@ func save_gp_registers
 	ret
 endfunc save_gp_registers
 
-func restore_gp_registers_eret
+/*
+ * This function restores all general purpose registers except x30 from the
+ * CPU context. x30 register must be explicitly restored by the caller.
+ */
+func restore_gp_registers
 	ldp	x0, x1, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_X0]
 	ldp	x2, x3, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_X2]
-	b	restore_gp_registers_callee_eret
-endfunc restore_gp_registers_eret
-
-func restore_gp_registers_callee_eret
 	ldp	x4, x5, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_X4]
 	ldp	x6, x7, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_X6]
 	ldp	x8, x9, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_X8]
 	ldp	x10, x11, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_X10]
 	ldp	x12, x13, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_X12]
 	ldp	x14, x15, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_X14]
+	ldp	x16, x17, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_X16]
 	ldp	x18, x19, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_X18]
 	ldp	x20, x21, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_X20]
 	ldp	x22, x23, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_X22]
 	ldp	x24, x25, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_X24]
 	ldp	x26, x27, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_X26]
+	ldr	x28, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_SP_EL0]
+	msr	sp_el0, x28
 	ldp	x28, x29, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_X28]
-	ldp	 x30, x17, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_LR]
-	msr	sp_el0, x17
-	ldp	x16, x17, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_X16]
-	eret
-endfunc	restore_gp_registers_callee_eret
+	ret
+endfunc restore_gp_registers
+
+/*
+ * Restore general purpose registers (including x30), and exit EL3 via. ERET to
+ * a lower exception level.
+ */
+func restore_gp_registers_eret
+	bl	restore_gp_registers
+	ldr	x30, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_LR]
+	exception_return
+endfunc	restore_gp_registers_eret
 
 	/* -----------------------------------------------------
 	 * This routine assumes that the SP_EL3 is pointing to
@@ -376,6 +392,14 @@ func el3_exit
 	msr	spsr_el3, x16
 	msr	elr_el3, x17
 
+#if IMAGE_BL31 && DYNAMIC_WORKAROUND_CVE_2018_3639
+	/* Restore mitigation state as it was on entry to EL3 */
+	ldr	x17, [sp, #CTX_CVE_2018_3639_OFFSET + CTX_CVE_2018_3639_DISABLE]
+	cmp	x17, xzr
+	beq	1f
+	blr	x17
+#endif
+1:
 	/* Restore saved general purpose registers and return */
 	b	restore_gp_registers_eret
 endfunc el3_exit

@@ -12,8 +12,8 @@
 void enable_mmu_secure(uint32_t flags);
 #else
 /* AArch64 specific translation table APIs */
-void enable_mmu_el1(unsigned int flags);
-void enable_mmu_el3(unsigned int flags);
+void enable_mmu_el1(uint32_t flags);
+void enable_mmu_el3(uint32_t flags);
 #endif /* AARCH32 */
 
 #endif /* __XLAT_MMU_HELPERS_H__ */

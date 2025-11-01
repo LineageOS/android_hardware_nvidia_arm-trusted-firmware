@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2016, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -27,7 +27,6 @@
 	.cfi_sections .debug_frame
 	.section .text.\_name, "ax"
 	.type \_name, %function
-	.func \_name
 	/*
 	 * .cfi_startproc and .cfi_endproc are needed to output entries in
 	 * .debug_frame
@@ -40,7 +39,6 @@
 	 * This macro is used to mark the end of a function.
 	 */
 	.macro endfunc _name
-	.endfunc
 	.cfi_endproc
 	.size \_name, . - \_name
 	.endm

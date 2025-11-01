@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2017, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -12,14 +12,15 @@
  * in the format string.
  */
 int
-sscanf(const char *__restrict str, char const *__restrict fmt, ...)
+sscanf(const char *str, char const *fmt, ...)
 {
 	int ret = 0;
 
 	while (*fmt != '\0') {
-		if (*fmt++ == '%') {
+		if (*fmt == '%') {
 			ret++;
 		}
+		fmt++;
 	}
 
 	return ret;

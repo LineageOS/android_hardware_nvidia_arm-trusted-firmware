@@ -34,7 +34,7 @@
  */
 
 /*
- * Portions copyright (c) 2013-2014, ARM Limited and Contributors.
+ * Portions copyright (c) 2013-2017, ARM Limited and Contributors.
  * All rights reserved.
  */
 
@@ -59,14 +59,14 @@ typedef	__ssize_t	ssize_t;
 #define	EOF	(-1)
 
 int	 printf(const char * __restrict, ...) __printflike(1, 2);
-int	 putchar(int);
-int	 puts(const char *);
+int	 putchar(int c);
+int	 puts(const char *s);
 int	 sprintf(char * __restrict, const char * __restrict, ...)
 	__printflike(2, 3);
 int	 vsprintf(char * __restrict, const char * __restrict,
 	   __va_list) __printflike(2, 0);
 
-int	 sscanf(const char *__restrict, char const *__restrict, ...);
+int	 sscanf(const char *str, char const *fmt, ...);
 
 #if __ISO_C_VISIBLE >= 1999
 int	 snprintf(char * __restrict, size_t, const char * __restrict,

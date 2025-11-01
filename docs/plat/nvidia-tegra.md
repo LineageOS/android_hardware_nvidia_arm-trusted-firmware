@@ -59,7 +59,7 @@ Preparing the BL31 image to run on Tegra SoCs
 'CROSS_COMPILE=<path-to-aarch64-gcc>/bin/aarch64-none-elf- make PLAT=tegra \
 TARGET_SOC=<target-soc e.g. t210|t132> SPD=<dispatcher e.g. tlkd> bl31'
 
-Platforms wanting to use different TZDRAM_BASE, can add 'TZDRAM_BASE=<value>'
+Platforms wanting to use different PLAT_BL31_BASE, can add 'PLAT_BL31_BASE=<value>'
 to the build command line.
 
 The Tegra platform code expects a pointer to the following platform specific
@@ -76,6 +76,10 @@ typedef struct plat_params_from_bl2 {
 	uint64_t tzdram_base;
 	/* UART port ID */
 	int uart_id;
+	/* L2 ECC parity protection disable flag */
+	int l2_ecc_parity_prot_dis;
+	/* SHMEM base address for storing the boot logs */
+	uint64_t boot_profiler_shmem_base;
 } plat_params_from_bl2_t;
 
 Power Management

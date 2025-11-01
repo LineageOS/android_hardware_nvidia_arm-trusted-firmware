@@ -28,20 +28,20 @@
 /* The following are used to set/get image attributes. */
 #define PARAM_EP_SECURITY_MASK		U(0x1)
 
-#define GET_SECURITY_STATE(x) (x & PARAM_EP_SECURITY_MASK)
+#define GET_SECURITY_STATE(x) ((x) & PARAM_EP_SECURITY_MASK)
 #define SET_SECURITY_STATE(x, security) \
 			((x) = ((x) & ~PARAM_EP_SECURITY_MASK) | (security))
 
 #define EP_EE_MASK	U(0x2)
 #define EP_EE_LITTLE	U(0x0)
 #define EP_EE_BIG	U(0x2)
-#define EP_GET_EE(x) (x & EP_EE_MASK)
+#define EP_GET_EE(x) ((x) & EP_EE_MASK)
 #define EP_SET_EE(x, ee) ((x) = ((x) & ~EP_EE_MASK) | (ee))
 
 #define EP_ST_MASK	U(0x4)
 #define EP_ST_DISABLE	U(0x0)
 #define EP_ST_ENABLE	U(0x4)
-#define EP_GET_ST(x) (x & EP_ST_MASK)
+#define EP_GET_ST(x) ((x) & EP_ST_MASK)
 #define EP_SET_ST(x, ee) ((x) = ((x) & ~EP_ST_MASK) | (ee))
 
 #define EP_EXE_MASK	U(0x8)

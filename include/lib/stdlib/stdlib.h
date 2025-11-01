@@ -82,7 +82,7 @@ void	*bsearch(const void *, const void *, size_t,
 	    size_t, int (*)(const void *, const void *));
 void	*calloc(size_t, size_t) __malloc_like;
 div_t	 div(int, int) __pure2;
-_Noreturn void	 exit(int);
+_Noreturn void	 exit(int v);
 void	 free(void *);
 char	*getenv(const char *);
 long	 labs(long) __pure2;
@@ -143,7 +143,7 @@ _Noreturn void	 _Exit(int);
 /*
  * If we're in a mode greater than C99, expose C11 functions.
  */
-#if __ISO_C_VISIBLE >= 2011 || __cplusplus >= 201103L
+#if __ISO_C_VISIBLE >= 2011 || (defined(__cplusplus) && __cplusplus >= 201103L)
 void *aligned_alloc(size_t, size_t) __malloc_like;
 int	at_quick_exit(void (*)(void));
 _Noreturn void
@@ -182,7 +182,7 @@ int	 mkstemp(char *);
  * in this header.  For revision 7, ecvt(), fcvt(), and gcvt(), which
  * FreeBSD also does not have, and mktemp(), are to be deleted.
  */
-#if __XSI_VISIBLE
+#if defined(__XSI_VISIBLE) && __XSI_VISIBLE != 0
 /* XXX XSI requires pollution from <sys/wait.h> here.  We'd rather not. */
 long	 a64l(const char *);
 double	 drand48(void);

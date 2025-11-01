@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 #
 
-SPD_INCLUDES		:=
+SPD_INCLUDES		:=	-Iservices/spd/trusty/include
 
 SPD_SOURCES		:=	services/spd/trusty/trusty.c		\
 				services/spd/trusty/trusty_helpers.S

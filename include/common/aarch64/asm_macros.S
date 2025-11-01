@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2020, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -65,9 +65,22 @@
 	 * security, robustness and potentially facilitates debugging.
 	 */
 	.macro vector_entry  label
+	.cfi_sections .debug_frame
 	.section .vectors, "ax"
 	.align 7, 0
+	.type \label, %function
+	.cfi_startproc
 	\label:
+	.endm
+
+	/*
+	 * Add the bytes until fill the full exception vector, whose size is always
+	 * 32 instructions. If there are more than 32 instructions in the
+	 * exception vector then an error is emitted.
+	 */
+	.macro end_vector_entry label
+	.cfi_endproc
+	.fill	\label + (32 * 4) - .
 	.endm
 
 	/*
@@ -77,9 +90,10 @@
 	 * vector entry as the parameter
 	 */
 	.macro check_vector_size since
-	  .if (. - \since) > (32 * 4)
-	    .error "Vector exceeds 32 instructions"
-	  .endif
+#if ERROR_DEPRECATED
+      .error "check_vector_size must not be used. Use end_vector_entry instead"
+#endif
+	end_vector_entry \since
 	.endm
 
 #if ENABLE_PLAT_COMPAT
@@ -186,4 +200,13 @@
 	.space	SPINLOCK_ASM_SIZE
 	.endm
 
-#endif /* __ASM_MACROS_S__ */
+	/*
+	 * Macro for mitigating against speculative execution beyond ERET.
+	 */
+	.macro exception_return
+	eret
+	dsb nsh
+	isb
+	.endm
+
+#endif /* ASM_MACROS_S */

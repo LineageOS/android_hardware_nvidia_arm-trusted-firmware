@@ -85,7 +85,13 @@ $(eval $(call add_define,DEBUG))
 ifneq (${DEBUG}, 0)
         BUILD_TYPE	:=	debug
         TF_CFLAGS	+= 	-g
-        ASFLAGS		+= 	-g -Wa,--gdwarf-2
+
+        ifneq ($(findstring clang,$(notdir $(CC))),)
+             ASFLAGS		+= 	-g
+        else
+             ASFLAGS		+= 	-g -Wa,--gdwarf-2
+        endif
+
         # Use LOG_LEVEL_INFO by default for debug builds
         LOG_LEVEL	:=	40
 else
@@ -120,21 +126,36 @@ CC			:=	${CROSS_COMPILE}gcc
 CPP			:=	${CROSS_COMPILE}cpp
 AS			:=	${CROSS_COMPILE}gcc
 AR			:=	${CROSS_COMPILE}ar
-LD			:=	${CROSS_COMPILE}ld
+LINKER			:=	${CROSS_COMPILE}ld
 OC			:=	${CROSS_COMPILE}objcopy
 OD			:=	${CROSS_COMPILE}objdump
 NM			:=	${CROSS_COMPILE}nm
 PP			:=	${CROSS_COMPILE}gcc -E
 
+# Use ${LINKER}.bfd instead if it exists (as absolute path or together with $PATH).
+ifneq ($(strip $(wildcard ${LD}.bfd) \
+	$(foreach dir,$(subst :, ,${PATH}),$(wildcard ${dir}/${LINKER}.bfd))),)
+LINKER			:=	${LINKER}.bfd
+endif
+
 ifeq ($(notdir $(CC)),armclang)
 TF_CFLAGS_aarch32	=	-target arm-arm-none-eabi -march=armv8-a
 TF_CFLAGS_aarch64	=	-target aarch64-arm-none-eabi -march=armv8-a
+LD			=	$(LINKER)
+AS			=	$(CC) -c -x assembler-with-cpp $(TF_CFLAGS_$(ARCH))
+CPP			=	$(CC) -E $(TF_CFLAGS_$(ARCH))
+PP			=	$(CC) -E $(TF_CFLAGS_$(ARCH))
 else ifneq ($(findstring clang,$(notdir $(CC))),)
 TF_CFLAGS_aarch32	=	-target armv8a-none-eabi
 TF_CFLAGS_aarch64	=	-target aarch64-elf
+LD			=	$(LINKER)
+AS			=	$(CC) -c -x assembler-with-cpp $(TF_CFLAGS_$(ARCH))
+CPP			=	$(CC) -E
+PP			=	$(CC) -E
 else
 TF_CFLAGS_aarch32	=	-march=armv8-a
 TF_CFLAGS_aarch64	=	-march=armv8-a
+LD			=	$(LINKER)
 endif
 
 TF_CFLAGS_aarch64	+=	-mgeneral-regs-only -mstrict-align
@@ -332,6 +353,16 @@ ifeq ($(HW_ASSISTED_COHERENCY)-$(USE_COHERENT_MEM),1-1)
 $(error USE_COHERENT_MEM cannot be enabled with HW_ASSISTED_COHERENCY)
 endif
 
+# SMC Calling Convention checks
+ifneq (${SMCCC_MAJOR_VERSION},1)
+    ifneq (${SPD},none)
+        $(error "SMC Calling Convention 1.X must be used with SPDs")
+    endif
+    ifeq (${ARCH},aarch32)
+        $(error "Only SMCCC 1.X is supported in AArch32 mode.")
+    endif
+endif
+
 ################################################################################
 # Process platform overrideable behaviour
 ################################################################################
@@ -457,6 +488,7 @@ $(eval $(call assert_boolean,WARMBOOT_ENABLE_DCACHE_EARLY))
 
 $(eval $(call assert_numeric,ARM_ARCH_MAJOR))
 $(eval $(call assert_numeric,ARM_ARCH_MINOR))
+$(eval $(call assert_numeric,SMCCC_MAJOR_VERSION))
 
 ################################################################################
 # Add definitions to the cpp preprocessor based on the current build options.
@@ -487,6 +519,7 @@ $(eval $(call add_define,PROGRAMMABLE_RESET_ADDRESS))
 $(eval $(call add_define,PSCI_EXTENDED_STATE_ID))
 $(eval $(call add_define,RESET_TO_BL31))
 $(eval $(call add_define,SEPARATE_CODE_AND_RODATA))
+$(eval $(call add_define,SMCCC_MAJOR_VERSION))
 $(eval $(call add_define,SPD_${SPD}))
 $(eval $(call add_define,SPIN_ON_BL1_EXIT))
 $(eval $(call add_define,TRUSTED_BOARD_BOOT))

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2014-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -43,13 +43,16 @@
 #define CORTEX_A57_ACTLR_EL1			S3_1_C15_C2_0
 
 #define CORTEX_A57_ACTLR_DIS_LOAD_PASS_DMB	(ULL(1) << 59)
+#define CORTEX_A57_ACTLR_EL1_DIS_LOAD_PASS_STORE	(ULL(1) << 55)
 #define CORTEX_A57_ACTLR_GRE_NGRE_AS_NGNRE	(ULL(1) << 54)
 #define CORTEX_A57_ACTLR_DIS_OVERREAD		(ULL(1) << 52)
 #define CORTEX_A57_ACTLR_NO_ALLOC_WBWA		(ULL(1) << 49)
 #define CORTEX_A57_ACTLR_DCC_AS_DCCI		(ULL(1) << 44)
 #define CORTEX_A57_ACTLR_FORCE_FPSCR_FLUSH	(ULL(1) << 38)
+#define CORTEX_A57_ACTLR_EL1_DIS_INSTR_PREFETCH	(ULL(1) << 32)
 #define CORTEX_A57_ACTLR_DIS_STREAMING		(ULL(3) << 27)
 #define CORTEX_A57_ACTLR_DIS_L1_STREAMING	(ULL(3) << 25)
+#define CORTEX_A57_ACTLR_EN_NC_LOAD_FWD		(ULL(1) << 24)
 #define CORTEX_A57_ACTLR_DIS_INDIRECT_PREDICTOR	(ULL(1) << 4)
 
 /*******************************************************************************

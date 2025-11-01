@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -9,9 +9,9 @@
 int puts(const char *s)
 {
 	int count = 0;
-	while(*s)
+	while(*s != '\0')
 	{
-		if (putchar(*s++) != EOF) {
+		if (putchar((int)*s++) != EOF) {
 			count++;
 		} else {
 			count = EOF;
@@ -22,10 +22,11 @@ int puts(const char *s)
 	/* According to the puts(3) manpage, the function should write a
 	 * trailing newline.
 	 */
-	if ((count != EOF) && (putchar('\n') != EOF))
+	if ((count != EOF) && (putchar((int)'\n') != EOF)) {
 		count++;
-	else
+	} else {
 		count = EOF;
+	}
 
 	return count;
 }

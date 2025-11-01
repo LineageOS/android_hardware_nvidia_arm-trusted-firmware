@@ -28,7 +28,7 @@
  */
 
 /*
- * Portions copyright (c) 2013-2014, ARM Limited and Contributors.
+ * Portions copyright (c) 2013-2017, ARM Limited and Contributors.
  * All rights reserved.
  */
 
@@ -41,12 +41,12 @@ strchr(const char *p, int ch)
 {
 	char c;
 
-	c = ch;
-	for (;; ++p) {
-		if (*p == c)
+	c = (char)ch;
+	for (; *p != '\0'; ++p) {
+		if (*p == c) {
 			return ((char *)p);
-		if (*p == '\0')
-			return (NULL);
+		}
 	}
-	/* NOTREACHED */
+
+	return (NULL);
 }

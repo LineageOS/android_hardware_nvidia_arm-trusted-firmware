@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __XLAT_TABLES_ARCH_H__
-#define __XLAT_TABLES_ARCH_H__
+#ifndef XLAT_TABLES_ARCH_H
+#define XLAT_TABLES_ARCH_H
 
 #include <arch.h>
 #include <platform_def.h>
@@ -24,9 +24,9 @@
  */
 
 #if PAGE_SIZE == (4*1024) /* 4KB */
-# define MIN_LVL_BLOCK_DESC 1
+# define MIN_LVL_BLOCK_DESC U(1)
 #else /* 16KB or 64KB */
-# define MIN_LVL_BLOCK_DESC 2
+# define MIN_LVL_BLOCK_DESC U(2)
 #endif
 
 /*
@@ -82,4 +82,4 @@
 
 #endif
 
-#endif /* __XLAT_TABLES_ARCH_H__ */
+#endif /* XLAT_TABLES_ARCH_H */

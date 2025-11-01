@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2014-2016, ARM Limited and Contributors. All rights reserved.
+# Copyright (c) 2014-2018, ARM Limited and Contributors. All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
 #
@@ -16,6 +16,19 @@ A53_DISABLE_NON_TEMPORAL_HINT	?=1
 # It is enabled by default.
 A57_DISABLE_NON_TEMPORAL_HINT	?=1
 
+# Flag to enable higher performance non-cacheable load
+# forwarding
+A57_ENABLE_NONCACHEABLE_LOAD_FWD	?= 0
+
+WORKAROUND_CVE_2017_5715	?=1
+WORKAROUND_CVE_2018_3639	?=1
+DYNAMIC_WORKAROUND_CVE_2018_3639	?=0
+WORKAROUND_CVE_2022_23960		?=1
+
+# Process A57_ENABLE_NONCACHEABLE_LOAD_FWD flag
+$(eval $(call assert_boolean,A57_ENABLE_NONCACHEABLE_LOAD_FWD))
+$(eval $(call add_define,A57_ENABLE_NONCACHEABLE_LOAD_FWD))
+
 # Process SKIP_A57_L1_FLUSH_PWR_DWN flag
 $(eval $(call assert_boolean,SKIP_A57_L1_FLUSH_PWR_DWN))
 $(eval $(call add_define,SKIP_A57_L1_FLUSH_PWR_DWN))
@@ -28,6 +41,26 @@ $(eval $(call add_define,A53_DISABLE_NON_TEMPORAL_HINT))
 $(eval $(call assert_boolean,A57_DISABLE_NON_TEMPORAL_HINT))
 $(eval $(call add_define,A57_DISABLE_NON_TEMPORAL_HINT))
 
+# Process WORKAROUND_CVE_2017_5715 flag
+$(eval $(call assert_boolean,WORKAROUND_CVE_2017_5715))
+$(eval $(call add_define,WORKAROUND_CVE_2017_5715))
+
+# Process WORKAROUND_CVE_2018_3639 flag
+$(eval $(call assert_boolean,WORKAROUND_CVE_2018_3639))
+$(eval $(call add_define,WORKAROUND_CVE_2018_3639))
+
+$(eval $(call assert_boolean,DYNAMIC_WORKAROUND_CVE_2018_3639))
+$(eval $(call add_define,DYNAMIC_WORKAROUND_CVE_2018_3639))
+
+# Process WORKAROUND_CVE_2022_23960 flag
+$(eval $(call assert_boolean,WORKAROUND_CVE_2022_23960))
+$(eval $(call add_define,WORKAROUND_CVE_2022_23960))
+
+ifneq (${DYNAMIC_WORKAROUND_CVE_2018_3639},0)
+    ifeq (${WORKAROUND_CVE_2018_3639},0)
+        $(error "Error: WORKAROUND_CVE_2018_3639 must be 1 if DYNAMIC_WORKAROUND_CVE_2018_3639 is 1")
+    endif
+endif
 
 # CPU Errata Build flags.
 # These should be enabled by the platform if the erratum workaround needs to be
@@ -80,6 +113,10 @@ ERRATA_A57_829520	?=0
 # only to revision <= r1p2 of the Cortex A57 cpu.
 ERRATA_A57_833471	?=0
 
+# Flag to apply erratum 855972 workaround during reset. This erratum applies
+# only to revision <= r1p3 of the Cortex A57 cpu.
+ERRATA_A57_859972	?=0
+
 # Process ERRATA_A53_826319 flag
 $(eval $(call assert_boolean,ERRATA_A53_826319))
 $(eval $(call add_define,ERRATA_A53_826319))
@@ -123,3 +160,7 @@ $(eval $(call add_define,ERRATA_A57_829520))
 # Process ERRATA_A57_833471 flag
 $(eval $(call assert_boolean,ERRATA_A57_833471))
 $(eval $(call add_define,ERRATA_A57_833471))
+
+# Process ERRATA_A57_859972 flag
+$(eval $(call assert_boolean,ERRATA_A57_859972))
+$(eval $(call add_define,ERRATA_A57_859972))

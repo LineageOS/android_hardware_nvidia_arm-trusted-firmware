@@ -26,19 +26,19 @@ static cpu_context_t psci_ns_context[PLATFORM_CORE_COUNT];
 /******************************************************************************
  * Define the psci capability variable.
  *****************************************************************************/
-unsigned int psci_caps;
+uint32_t psci_caps;
 
 /*******************************************************************************
  * Function which initializes the 'psci_non_cpu_pd_nodes' or the
  * 'psci_cpu_pd_nodes' corresponding to the power level.
  ******************************************************************************/
-static void psci_init_pwr_domain_node(unsigned int node_idx,
-					unsigned int parent_idx,
-					unsigned int level)
+static void psci_init_pwr_domain_node(uint32_t node_idx,
+					uint32_t parent_idx,
+					uint32_t level)
 {
 	if (level > PSCI_CPU_PWR_LVL) {
-		psci_non_cpu_pd_nodes[node_idx].level = level;
-		psci_lock_init(psci_non_cpu_pd_nodes, node_idx);
+		psci_non_cpu_pd_nodes[node_idx].level = (uint8_t)level;
+		psci_lock_init(psci_non_cpu_pd_nodes, (uint8_t)node_idx);
 		psci_non_cpu_pd_nodes[node_idx].parent_node = parent_idx;
 		psci_non_cpu_pd_nodes[node_idx].local_state =
 							 PLAT_MAX_OFF_STATE;
@@ -82,15 +82,15 @@ static void psci_init_pwr_domain_node(unsigned int node_idx,
  *******************************************************************************/
 static void psci_update_pwrlvl_limits(void)
 {
-	int j;
-	unsigned int nodes_idx[PLAT_MAX_PWR_LVL] = {0};
-	unsigned int temp_index[PLAT_MAX_PWR_LVL], cpu_idx;
+	int32_t j;
+	uint32_t nodes_idx[PLAT_MAX_PWR_LVL] = {0};
+	uint32_t temp_index[PLAT_MAX_PWR_LVL], cpu_idx;
 
-	for (cpu_idx = 0; cpu_idx < PLATFORM_CORE_COUNT; cpu_idx++) {
+	for (cpu_idx = 0U; cpu_idx < (uint32_t)PLATFORM_CORE_COUNT; cpu_idx++) {
 		psci_get_parent_pwr_domain_nodes(cpu_idx,
 						 PLAT_MAX_PWR_LVL,
 						 temp_index);
-		for (j = PLAT_MAX_PWR_LVL - 1; j >= 0; j--) {
+		for (j = (int32_t)PLAT_MAX_PWR_LVL - 1; j >= 0; j--) {
 			if (temp_index[j] != nodes_idx[j]) {
 				nodes_idx[j] = temp_index[j];
 				psci_non_cpu_pd_nodes[nodes_idx[j]].cpu_start_idx
@@ -109,9 +109,9 @@ static void psci_update_pwrlvl_limits(void)
  ******************************************************************************/
 static void populate_power_domain_tree(const unsigned char *topology)
 {
-	unsigned int i, j = 0, num_nodes_at_lvl = 1, num_nodes_at_next_lvl;
-	unsigned int node_index = 0, parent_node_index = 0, num_children;
-	int level = PLAT_MAX_PWR_LVL;
+	uint32_t i, j = 0, num_nodes_at_lvl = 1, num_nodes_at_next_lvl;
+	uint32_t node_index = 0, parent_node_index = 0, num_children;
+	int32_t level = (int32_t)PLAT_MAX_PWR_LVL;
 
 	/*
 	 * For each level the inputs are:
@@ -122,7 +122,7 @@ static void populate_power_domain_tree(const unsigned char *topology)
 	 * - Index of first free entry in psci_non_cpu_pd_nodes[] or
 	 *   psci_cpu_pd_nodes[] i.e. node_index depending upon the level.
 	 */
-	while (level >= PSCI_CPU_PWR_LVL) {
+	while (level >= (int32_t)PSCI_CPU_PWR_LVL) {
 		num_nodes_at_next_lvl = 0;
 		/*
 		 * For each entry (parent node) at this level in the plat_array:
@@ -134,14 +134,15 @@ static void populate_power_domain_tree(const unsigned char *topology)
 		 */
 		for (i = 0; i < num_nodes_at_lvl; i++) {
 			assert(parent_node_index <=
-					PSCI_NUM_NON_CPU_PWR_DOMAINS);
+					(uint32_t)PSCI_NUM_NON_CPU_PWR_DOMAINS);
 			num_children = topology[parent_node_index];
 
 			for (j = node_index;
-				j < node_index + num_children; j++)
+				j < node_index + num_children; j++) {
 				psci_init_pwr_domain_node(j,
-							  parent_node_index - 1,
-							  level);
+							  parent_node_index - 1U,
+							  (uint32_t)level);
+			}
 
 			node_index = j;
 			num_nodes_at_next_lvl += num_children;
@@ -152,12 +153,13 @@ static void populate_power_domain_tree(const unsigned char *topology)
 		level--;
 
 		/* Reset the index for the cpu power domain array */
-		if (level == PSCI_CPU_PWR_LVL)
+		if (level == (int32_t)PSCI_CPU_PWR_LVL) {
 			node_index = 0;
+		}
 	}
 
 	/* Validate the sanity of array exported by the platform */
-	assert(j == PLATFORM_CORE_COUNT);
+	assert(j == (uint32_t)PLATFORM_CORE_COUNT);
 }
 
 /*******************************************************************************
@@ -213,8 +215,8 @@ int psci_setup(const psci_lib_args_t *lib_args)
 	 */
 	psci_set_pwr_domains_to_run(PLAT_MAX_PWR_LVL);
 
-	plat_setup_psci_ops((uintptr_t)lib_args->mailbox_ep, &psci_plat_pm_ops);
-	assert(psci_plat_pm_ops);
+	(void)plat_setup_psci_ops(lib_args->mailbox_ep, &psci_plat_pm_ops);
+	assert(psci_plat_pm_ops != NULL);
 
 	/*
 	 * Flush `psci_plat_pm_ops` as it will be accessed by secondary CPUs
@@ -226,23 +228,29 @@ int psci_setup(const psci_lib_args_t *lib_args)
 	/* Initialize the psci capability */
 	psci_caps = PSCI_GENERIC_CAP;
 
-	if (psci_plat_pm_ops->pwr_domain_off)
+	if (psci_plat_pm_ops->pwr_domain_off != NULL) {
 		psci_caps |=  define_psci_cap(PSCI_CPU_OFF);
-	if (psci_plat_pm_ops->pwr_domain_on &&
-			psci_plat_pm_ops->pwr_domain_on_finish)
-		psci_caps |=  define_psci_cap(PSCI_CPU_ON_AARCH64);
-	if (psci_plat_pm_ops->pwr_domain_suspend &&
-			psci_plat_pm_ops->pwr_domain_suspend_finish) {
-		psci_caps |=  define_psci_cap(PSCI_CPU_SUSPEND_AARCH64);
-		if (psci_plat_pm_ops->get_sys_suspend_power_state)
-			psci_caps |=  define_psci_cap(PSCI_SYSTEM_SUSPEND_AARCH64);
 	}
-	if (psci_plat_pm_ops->system_off)
+	if ((psci_plat_pm_ops->pwr_domain_on != NULL) &&
+			(psci_plat_pm_ops->pwr_domain_on_finish != NULL)) {
+		psci_caps |=  define_psci_cap(PSCI_CPU_ON_AARCH64);
+	}
+	if ((psci_plat_pm_ops->pwr_domain_suspend != NULL) &&
+			(psci_plat_pm_ops->pwr_domain_suspend_finish != NULL)) {
+		psci_caps |=  define_psci_cap(PSCI_CPU_SUSPEND_AARCH64);
+		if (psci_plat_pm_ops->get_sys_suspend_power_state != NULL) {
+			psci_caps |=  define_psci_cap(PSCI_SYSTEM_SUSPEND_AARCH64);
+		}
+	}
+	if (psci_plat_pm_ops->system_off != NULL) {
 		psci_caps |=  define_psci_cap(PSCI_SYSTEM_OFF);
-	if (psci_plat_pm_ops->system_reset)
+	}
+	if (psci_plat_pm_ops->system_reset != NULL) {
 		psci_caps |=  define_psci_cap(PSCI_SYSTEM_RESET);
-	if (psci_plat_pm_ops->get_node_hw_state)
+	}
+	if (psci_plat_pm_ops->get_node_hw_state != NULL) {
 		psci_caps |= define_psci_cap(PSCI_NODE_HW_STATE_AARCH64);
+	}
 
 #if ENABLE_PSCI_STAT
 	psci_caps |=  define_psci_cap(PSCI_STAT_RESIDENCY_AARCH64);

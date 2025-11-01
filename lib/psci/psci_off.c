@@ -19,10 +19,11 @@
  ******************************************************************************/
 static void psci_set_power_off_state(psci_power_state_t *state_info)
 {
-	unsigned int lvl;
+	uint32_t lvl;
 
-	for (lvl = PSCI_CPU_PWR_LVL; lvl <= PLAT_MAX_PWR_LVL; lvl++)
+	for (lvl = PSCI_CPU_PWR_LVL; lvl <= PLAT_MAX_PWR_LVL; lvl++) {
 		state_info->pwr_domain_state[lvl] = PLAT_MAX_OFF_STATE;
+	}
 }
 
 /******************************************************************************
@@ -38,16 +39,17 @@ static void psci_set_power_off_state(psci_power_state_t *state_info)
  * interconnect level if the cpu is the last in the cluster and also the
  * program the power controller.
  ******************************************************************************/
-int psci_do_cpu_off(unsigned int end_pwrlvl)
+int32_t psci_do_cpu_off(uint32_t end_pwrlvl)
 {
-	int rc = PSCI_E_SUCCESS, idx = plat_my_core_pos();
+	int32_t rc = PSCI_E_SUCCESS;
+	uint32_t idx = plat_my_core_pos();
 	psci_power_state_t state_info;
 
 	/*
 	 * This function must only be called on platforms where the
 	 * CPU_OFF platform hooks have been implemented.
 	 */
-	assert(psci_plat_pm_ops->pwr_domain_off);
+	assert(psci_plat_pm_ops->pwr_domain_off != NULL);
 
 	/*
 	 * This function acquires the lock corresponding to each power
@@ -62,10 +64,11 @@ int psci_do_cpu_off(unsigned int end_pwrlvl)
 	 * to let it do any bookkeeping. Assume that the SPD always reports an
 	 * E_DENIED error if SP refuse to power down
 	 */
-	if (psci_spd_pm && psci_spd_pm->svc_off) {
+	if ((psci_spd_pm != NULL) && (psci_spd_pm->svc_off != NULL)) {
 		rc = psci_spd_pm->svc_off(0);
-		if (rc)
+		if (rc != 0) {
 			goto exit;
+		}
 	}
 
 	/* Construct the psci_power_state for CPU_OFF */
@@ -82,6 +85,12 @@ int psci_do_cpu_off(unsigned int end_pwrlvl)
 	/* Update the last cpu for each level till end_pwrlvl */
 	psci_stats_update_pwr_down(end_pwrlvl, &state_info);
 #endif
+
+	/*
+	 * Plat. management: Perform platform specific actions to turn this
+	 * cpu off e.g. exit cpu coherency, program the power controller etc.
+	 */
+	psci_plat_pm_ops->pwr_domain_off(&state_info);
 
 #if ENABLE_RUNTIME_INSTRUMENTATION
 
@@ -104,12 +113,6 @@ int psci_do_cpu_off(unsigned int end_pwrlvl)
 		RT_INSTR_EXIT_CFLUSH,
 		PMF_NO_CACHE_MAINT);
 #endif
-
-	/*
-	 * Plat. management: Perform platform specific actions to turn this
-	 * cpu off e.g. exit cpu coherency, program the power controller etc.
-	 */
-	psci_plat_pm_ops->pwr_domain_off(&state_info);
 
 #if ENABLE_PSCI_STAT
 	plat_psci_stat_accounting_start(&state_info);
@@ -154,7 +157,7 @@ exit:
 		    PMF_NO_CACHE_MAINT);
 #endif
 
-		if (psci_plat_pm_ops->pwr_domain_pwr_down_wfi) {
+		if (psci_plat_pm_ops->pwr_domain_pwr_down_wfi != NULL) {
 			/* This function must not return */
 			psci_plat_pm_ops->pwr_domain_pwr_down_wfi(&state_info);
 		} else {

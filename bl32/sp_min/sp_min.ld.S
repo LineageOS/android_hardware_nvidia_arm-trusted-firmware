@@ -1,10 +1,11 @@
 /*
- * Copyright (c) 2016-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2016-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #include <platform_def.h>
+#include <xlat_tables_defs.h>
 
 OUTPUT_FORMAT(elf32-littlearm)
 OUTPUT_ARCH(arm)
@@ -18,7 +19,7 @@ MEMORY {
 SECTIONS
 {
     . = BL32_BASE;
-   ASSERT(. == ALIGN(4096),
+   ASSERT(. == ALIGN(PAGE_SIZE),
           "BL32_BASE address is not aligned on a page boundary.")
 
 #if SEPARATE_CODE_AND_RODATA
@@ -27,9 +28,18 @@ SECTIONS
         *entrypoint.o(.text*)
         *(.text*)
         *(.vectors)
-        . = NEXT(4096);
+        . = ALIGN(PAGE_SIZE);
         __TEXT_END__ = .;
     } >RAM
+
+     /* .ARM.extab and .ARM.exidx are only added because Clang need them */
+     .ARM.extab . : {
+        *(.ARM.extab* .gnu.linkonce.armextab.*)
+     } >RAM
+
+     .ARM.exidx . : {
+        *(.ARM.exidx* .gnu.linkonce.armexidx.*)
+     } >RAM
 
     .rodata . : {
         __RODATA_START__ = .;
@@ -50,7 +60,7 @@ SECTIONS
         KEEP(*(cpu_ops))
         __CPU_OPS_END__ = .;
 
-        . = NEXT(4096);
+        . = ALIGN(PAGE_SIZE);
         __RODATA_END__ = .;
     } >RAM
 #else
@@ -83,10 +93,16 @@ SECTIONS
          * read-only, executable.  No RW data from the next section must
          * creep in.  Ensure the rest of the current memory block is unused.
          */
-        . = NEXT(4096);
+        . = ALIGN(PAGE_SIZE);
         __RO_END__ = .;
     } >RAM
 #endif
+
+    /*
+     * Define a linker symbol for the runtime service descriptor
+     * memory region size.
+     */
+    __RT_SVC_DESCS_SIZE__ = __RT_SVC_DESCS_END__ - __RT_SVC_DESCS_START__;
 
     ASSERT(__CPU_OPS_END__ > __CPU_OPS_START__,
            "cpu_ops not defined for this platform.")
@@ -178,7 +194,7 @@ SECTIONS
      * are not mixed with normal data.  This is required to set up the correct
      * memory attributes for the coherent data page tables.
      */
-    coherent_ram (NOLOAD) : ALIGN(4096) {
+    coherent_ram (NOLOAD) : ALIGN(PAGE_SIZE) {
         __COHERENT_RAM_START__ = .;
         /*
          * Bakery locks are stored in coherent memory
@@ -193,7 +209,7 @@ SECTIONS
          * as device memory.  No other unexpected data must creep in.
          * Ensure the rest of the current memory page is unused.
          */
-        . = NEXT(4096);
+        . = ALIGN(PAGE_SIZE);
         __COHERENT_RAM_END__ = .;
     } >RAM
 

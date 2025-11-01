@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2016-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -7,7 +7,7 @@
 #include <debug.h>
 #include <platform.h>
 #include <pmf.h>
-#include <smcc_helpers.h>
+#include <smccc_helpers.h>
 
 /*
  * This function is responsible for handling all PMF SMC calls.
@@ -23,6 +23,10 @@ uintptr_t pmf_smc_handler(unsigned int smc_fid,
 {
 	int rc;
 	unsigned long long ts_value;
+
+	/* Determine if the cpu exists of not */
+	if (!is_valid_mpidr(x2))
+		return PSCI_E_INVALID_PARAMS;
 
 	if (((smc_fid >> FUNCID_CC_SHIFT) & FUNCID_CC_MASK) == SMC_32) {
 

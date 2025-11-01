@@ -29,6 +29,11 @@
  * $FreeBSD$
  */
 
+/*
+ * Portions copyright (c) 2017, ARM Limited and Contributors.
+ * All rights reserved.
+ */
+
 #ifndef _SYS_LIMITS_H_
 #define	_SYS_LIMITS_H_
 
@@ -93,7 +98,7 @@
 #define	WORD_BIT	__WORD_BIT
 #endif
 
-#if __POSIX_VISIBLE
+#if __POSIX_VISIBLE > 0
 #define	MQ_PRIO_MAX	64
 #endif
 

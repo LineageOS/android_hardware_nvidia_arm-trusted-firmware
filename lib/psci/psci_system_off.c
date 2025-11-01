@@ -16,14 +16,14 @@ void psci_system_off(void)
 {
 	psci_print_power_domain_map();
 
-	assert(psci_plat_pm_ops->system_off);
+	assert(psci_plat_pm_ops->system_off != NULL);
 
 	/* Notify the Secure Payload Dispatcher */
-	if (psci_spd_pm && psci_spd_pm->svc_system_off) {
+	if ((psci_spd_pm != NULL) && (psci_spd_pm->svc_system_off != NULL)) {
 		psci_spd_pm->svc_system_off();
 	}
 
-	console_flush();
+	(void)console_flush();
 
 	/* Call the platform specific hook */
 	psci_plat_pm_ops->system_off();
@@ -35,14 +35,14 @@ void psci_system_reset(void)
 {
 	psci_print_power_domain_map();
 
-	assert(psci_plat_pm_ops->system_reset);
+	assert(psci_plat_pm_ops->system_reset != NULL);
 
 	/* Notify the Secure Payload Dispatcher */
-	if (psci_spd_pm && psci_spd_pm->svc_system_reset) {
+	if ((psci_spd_pm != NULL) && (psci_spd_pm->svc_system_reset != NULL)) {
 		psci_spd_pm->svc_system_reset();
 	}
 
-	console_flush();
+	(void)console_flush();
 
 	/* Call the platform specific hook */
 	psci_plat_pm_ops->system_reset();

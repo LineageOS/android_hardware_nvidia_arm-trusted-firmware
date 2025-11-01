@@ -8,16 +8,16 @@
 #define __PARAM_HEADER_H__
 
 /* Param header types */
-#define PARAM_EP		0x01
-#define PARAM_IMAGE_BINARY	0x02
-#define PARAM_BL31		0x03
-#define PARAM_BL_LOAD_INFO	0x04
-#define PARAM_BL_PARAMS		0x05
-#define PARAM_PSCI_LIB_ARGS	0x06
+#define PARAM_EP		0x01U
+#define PARAM_IMAGE_BINARY	0x02U
+#define PARAM_BL31		0x03U
+#define PARAM_BL_LOAD_INFO	0x04U
+#define PARAM_BL_PARAMS		0x05U
+#define PARAM_PSCI_LIB_ARGS	0x06U
 
 /* Param header version */
-#define VERSION_1	0x01
-#define VERSION_2	0x02
+#define VERSION_1	0x01U
+#define VERSION_2	0x02U
 
 #define SET_PARAM_HEAD(_p, _type, _ver, _attr) do { \
 	(_p)->h.type = (uint8_t)(_type); \

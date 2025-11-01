@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -17,13 +17,15 @@
 #include <utils.h>
 #include <xlat_tables_defs.h>
 
-uintptr_t page_align(uintptr_t value, unsigned dir)
+#if !defined(IMAGE_BL31)
+uintptr_t page_align(uintptr_t value, uint32_t dir)
 {
 	/* Round up the limit to the next page boundary */
-	if (value & (PAGE_SIZE - 1)) {
-		value &= ~(PAGE_SIZE - 1);
-		if (dir == UP)
+	if ((value & (PAGE_SIZE - 1U)) != 0U) {
+		value &= ~(PAGE_SIZE - 1U);
+		if (dir == UP) {
 			value += PAGE_SIZE;
+		}
 	}
 
 	return value;
@@ -35,7 +37,7 @@ uintptr_t page_align(uintptr_t value, unsigned dir)
  * Return 1 if it is free, 0 if it is not free or if the input values are
  * invalid.
  *****************************************************************************/
-int is_mem_free(uintptr_t free_base, size_t free_size,
+bool is_mem_free(uintptr_t free_base, size_t free_size,
 		uintptr_t addr, size_t size)
 {
 	uintptr_t free_end, requested_end;
@@ -47,23 +49,27 @@ int is_mem_free(uintptr_t free_base, size_t free_size,
 	 * left (i.e. free_size == 0) but we don't ask for any memory
 	 * (i.e. size == 0) then we should report that the memory is free.
 	 */
-	if (size == 0)
-		return 1;	/* A zero-byte region is always free */
-	if (free_size == 0)
-		return 0;
+	if (size == 0U) {
+		return true;	/* A zero-byte region is always free */
+	}
+	if (free_size == 0U) {
+		return false;
+	}
 
 	/*
 	 * Check that the end addresses don't overflow.
 	 * If they do, consider that this memory region is not free, as this
 	 * is an invalid scenario.
 	 */
-	if (check_uptr_overflow(free_base, free_size - 1))
-		return 0;
-	free_end = free_base + (free_size - 1);
+	if (check_uptr_overflow(free_base, (free_size - 1U)) != 0) {
+		return false;
+	}
+	free_end = free_base + (free_size - 1U);
 
-	if (check_uptr_overflow(addr, size - 1))
-		return 0;
-	requested_end = addr + (size - 1);
+	if (check_uptr_overflow(addr, (size - 1U)) != 0) {
+		return false;
+	}
+	requested_end = addr + (size - 1U);
 
 	/*
 	 * Finally, check that the requested memory region lies within the free
@@ -79,7 +85,7 @@ int is_mem_free(uintptr_t free_base, size_t free_size,
  * size of the smallest chunk of free memory surrounding the sub-region in
  * 'small_chunk_size'.
  *****************************************************************************/
-static unsigned int choose_mem_pos(uintptr_t mem_start, uintptr_t mem_end,
+static bool choose_mem_pos(uintptr_t mem_start, uintptr_t mem_end,
 				  uintptr_t submem_start, uintptr_t submem_end,
 				  size_t *small_chunk_size)
 {
@@ -114,26 +120,27 @@ void reserve_mem(uintptr_t *free_base, size_t *free_size,
 {
 	size_t discard_size;
 	size_t reserved_size;
-	unsigned int pos;
+	bool pos;
 
 	assert(free_base != NULL);
 	assert(free_size != NULL);
 	assert(is_mem_free(*free_base, *free_size, addr, size));
 
-	if (size == 0) {
+	if (size == 0U) {
 		WARN("Nothing to allocate, requested size is zero\n");
 		return;
 	}
 
-	pos = choose_mem_pos(*free_base, *free_base + (*free_size - 1),
-			     addr, addr + (size - 1),
+	pos = choose_mem_pos(*free_base, *free_base + (*free_size - 1U),
+			     addr, addr + (size - 1U),
 			     &discard_size);
 
 	reserved_size = size + discard_size;
 	*free_size -= reserved_size;
 
-	if (pos == BOTTOM)
+	if (pos == BOTTOM) {
 		*free_base = addr + size;
+	}
 
 	VERBOSE("Reserved 0x%zx bytes (discarded 0x%zx bytes %s)\n",
 	     reserved_size, discard_size,
@@ -155,13 +162,13 @@ static void dump_load_info(uintptr_t image_load_addr,
 #endif /* LOAD_IMAGE_V2 */
 
 /* Generic function to return the size of an image */
-size_t image_size(unsigned int image_id)
+size_t get_image_size(uint32_t image_id)
 {
 	uintptr_t dev_handle;
 	uintptr_t image_handle;
 	uintptr_t image_spec;
 	size_t image_size = 0;
-	int io_result;
+	int32_t io_result;
 
 	/* Obtain a reference to the image by querying the platform layer */
 	io_result = plat_get_image_source(image_id, &dev_handle, &image_spec);
@@ -181,7 +188,7 @@ size_t image_size(unsigned int image_id)
 
 	/* Find the size of the image */
 	io_result = io_size(image_handle, &image_size);
-	if ((io_result != 0) || (image_size == 0)) {
+	if ((io_result != 0) || (image_size == 0U)) {
 		WARN("Failed to determine the size of the image id=%u (%i)\n",
 			image_id, io_result);
 	}
@@ -207,7 +214,7 @@ size_t image_size(unsigned int image_id)
  *
  * Returns 0 on success, a negative error code otherwise.
  ******************************************************************************/
-int load_image(unsigned int image_id, image_info_t *image_data)
+int load_image(uint32_t image_id, image_info_t *image_data)
 {
 	uintptr_t dev_handle;
 	uintptr_t image_handle;
@@ -215,7 +222,7 @@ int load_image(unsigned int image_id, image_info_t *image_data)
 	uintptr_t image_base;
 	size_t image_size;
 	size_t bytes_read;
-	int io_result;
+	int32_t io_result;
 
 	assert(image_data != NULL);
 	assert(image_data->h.version >= VERSION_2);
@@ -291,14 +298,14 @@ exit:
 	return io_result;
 }
 
-static int load_auth_image_internal(unsigned int image_id,
+static int32_t load_auth_image_internal(uint32_t image_id,
 				    image_info_t *image_data,
-				    int is_parent_image)
+				    int32_t is_parent_image)
 {
-	int rc;
+	int32_t rc;
 
 #if TRUSTED_BOARD_BOOT
-	unsigned int parent_id;
+	uint32_t parent_id;
 
 	/* Use recursion to authenticate parent images */
 	rc = auth_mod_get_parent_id(image_id, &parent_id);
@@ -352,7 +359,7 @@ static int load_auth_image_internal(unsigned int image_id,
  * authentication failed. In addition, this function uses recursion to
  * authenticate the parent images up to the root of trust.
  ******************************************************************************/
-int load_auth_image(unsigned int image_id, image_info_t *image_data)
+int32_t load_auth_image(uint32_t image_id, image_info_t *image_data)
 {
 	return load_auth_image_internal(image_id, image_data, 0);
 }
@@ -376,8 +383,8 @@ int load_auth_image(unsigned int image_id, image_info_t *image_data)
  *
  * Returns 0 on success, a negative error code otherwise.
  ******************************************************************************/
-int load_image(meminfo_t *mem_layout,
-	       unsigned int image_id,
+int32_t load_image(meminfo_t *mem_layout,
+	       uint32_t image_id,
 	       uintptr_t image_base,
 	       image_info_t *image_data,
 	       entry_point_info_t *entry_point_info)
@@ -387,7 +394,7 @@ int load_image(meminfo_t *mem_layout,
 	uintptr_t image_spec;
 	size_t image_size;
 	size_t bytes_read;
-	int io_result;
+	int32_t io_result;
 
 	assert(mem_layout != NULL);
 	assert(image_data != NULL);
@@ -414,7 +421,7 @@ int load_image(meminfo_t *mem_layout,
 
 	/* Find the size of the image */
 	io_result = io_size(image_handle, &image_size);
-	if ((io_result != 0) || (image_size == 0)) {
+	if ((io_result != 0) || (image_size == 0U)) {
 		WARN("Failed to determine the size of the image id=%u (%i)\n",
 			image_id, io_result);
 		goto exit;
@@ -439,7 +446,7 @@ int load_image(meminfo_t *mem_layout,
 	}
 
 	image_data->image_base = image_base;
-	image_data->image_size = image_size;
+	image_data->image_size = (uint32_t)image_size;
 
 	/*
 	 * Update the memory usage info.
@@ -472,27 +479,27 @@ int load_image(meminfo_t *mem_layout,
 		(void *) image_base, image_size);
 
 exit:
-	io_close(image_handle);
+	(void)io_close(image_handle);
 	/* Ignore improbable/unrecoverable error in 'close' */
 
 	/* TODO: Consider maintaining open device connection from this bootloader stage */
-	io_dev_close(dev_handle);
+	(void)io_dev_close(dev_handle);
 	/* Ignore improbable/unrecoverable error in 'dev_close' */
 
 	return io_result;
 }
 
-static int load_auth_image_internal(meminfo_t *mem_layout,
-				    unsigned int image_id,
+static int32_t load_auth_image_internal(meminfo_t *mem_layout,
+				    uint32_t image_id,
 				    uintptr_t image_base,
 				    image_info_t *image_data,
 				    entry_point_info_t *entry_point_info,
-				    int is_parent_image)
+				    int32_t is_parent_image)
 {
-	int rc;
+	int32_t rc;
 
 #if TRUSTED_BOARD_BOOT
-	unsigned int parent_id;
+	uint32_t parent_id;
 
 	/* Use recursion to authenticate parent images */
 	rc = auth_mod_get_parent_id(image_id, &parent_id);
@@ -547,8 +554,8 @@ static int load_auth_image_internal(meminfo_t *mem_layout,
  * authentication failed. In addition, this function uses recursion to
  * authenticate the parent images up to the root of trust.
  ******************************************************************************/
-int load_auth_image(meminfo_t *mem_layout,
-		    unsigned int image_id,
+int32_t load_auth_image(meminfo_t *mem_layout,
+		    uint32_t image_id,
 		    uintptr_t image_base,
 		    image_info_t *image_data,
 		    entry_point_info_t *entry_point_info)
@@ -558,13 +565,14 @@ int load_auth_image(meminfo_t *mem_layout,
 }
 
 #endif /* LOAD_IMAGE_V2 */
+#endif /* IMAGE_BL31 */
 
 /*******************************************************************************
  * Print the content of an entry_point_info_t structure.
  ******************************************************************************/
 void print_entry_point_info(const entry_point_info_t *ep_info)
 {
-	INFO("Entry point address = %p\n", (void *)ep_info->pc);
+	INFO("Entry point address = 0x%lx\n", ep_info->pc);
 	INFO("SPSR = 0x%x\n", ep_info->spsr);
 
 #define PRINT_IMAGE_ARG(n)					\

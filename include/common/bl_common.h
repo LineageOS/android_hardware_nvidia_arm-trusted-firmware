@@ -9,15 +9,16 @@
 
 #include <ep_info.h>
 #include <param_header.h>
+#include <stdbool.h>
 
-#define UP	1
-#define DOWN	0
+#define UP	1U
+#define DOWN	0U
 
 /*******************************************************************************
  * Constants to identify the location of a memory region in a given memory
  * layout.
 ******************************************************************************/
-#define TOP	0x1
+#define TOP	true
 #define BOTTOM	!TOP
 
 /*
@@ -126,12 +127,12 @@ typedef struct image_info {
  *****************************************************************************/
 typedef struct image_desc {
 	/* Contains unique image id for the image. */
-	unsigned int image_id;
+	uint32_t image_id;
 	/*
 	 * This member contains Image state information.
 	 * Refer IMAGE_STATE_XXX defined above.
 	 */
-	unsigned int state;
+	uint32_t state;
 	uint32_t copied_size;	/* image size copied in blocks */
 	image_info_t image_info;
 	entry_point_info_t ep_info;
@@ -140,7 +141,7 @@ typedef struct image_desc {
 #if LOAD_IMAGE_V2
 /* BL image node in the BL image loading sequence */
 typedef struct bl_load_info_node {
-	unsigned int image_id;
+	uint32_t image_id;
 	image_info_t *image_info;
 	struct bl_load_info_node *next_load_info;
 } bl_load_info_node_t;
@@ -153,7 +154,7 @@ typedef struct bl_load_info {
 
 /* BL image node in the BL image execution sequence */
 typedef struct bl_params_node {
-	unsigned int image_id;
+	uint32_t image_id;
 	image_info_t *image_info;
 	entry_point_info_t *ep_info;
 	struct bl_params_node *next_params_info;
@@ -198,26 +199,26 @@ typedef struct bl31_params {
 /*******************************************************************************
  * Function & variable prototypes
  ******************************************************************************/
-size_t image_size(unsigned int image_id);
+size_t get_image_size(uint32_t image_id);
 
-int is_mem_free(uintptr_t free_base, size_t free_size,
+bool is_mem_free(uintptr_t free_base, size_t free_size,
 		uintptr_t addr, size_t size);
 
 #if LOAD_IMAGE_V2
 
-int load_image(unsigned int image_id, image_info_t *image_data);
-int load_auth_image(unsigned int image_id, image_info_t *image_data);
+int32_t load_image(uint32_t image_id, image_info_t *image_data);
+int32_t load_auth_image(uint32_t image_id, image_info_t *image_data);
 
 #else
 
-uintptr_t page_align(uintptr_t, unsigned);
-int load_image(meminfo_t *mem_layout,
-	       unsigned int image_id,
+uintptr_t page_align(uintptr_t value, uint32_t dir);
+int32_t load_image(meminfo_t *mem_layout,
+	       uint32_t image_id,
 	       uintptr_t image_base,
 	       image_info_t *image_data,
 	       entry_point_info_t *entry_point_info);
-int load_auth_image(meminfo_t *mem_layout,
-		    unsigned int image_id,
+int32_t load_auth_image(meminfo_t *mem_layout,
+		    uint32_t image_id,
 		    uintptr_t image_base,
 		    image_info_t *image_data,
 		    entry_point_info_t *entry_point_info);

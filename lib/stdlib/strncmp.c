@@ -28,7 +28,7 @@
  */
 
 /*
- * Portions copyright (c) 2014, ARM Limited and Contributors.
+ * Portions copyright (c) 2014-2017, ARM Limited and Contributors.
  * All rights reserved.
  */
 
@@ -38,15 +38,18 @@
 int
 strncmp(const char *s1, const char *s2, size_t n)
 {
-
-	if (n == 0)
+	if (n == 0U) {
 		return 0;
+	}
 	do {
-		if (*s1 != *s2++)
-			return (*(const unsigned char *)s1 -
-				*(const unsigned char *)(s2 - 1));
-		if (*s1++ == '\0')
+		if (*s1 != *s2++) {
+			return (int)(*(const unsigned char *)s1) -
+				(int)(*(const unsigned char *)(s2 - 1));
+		}
+		if (*s1++ == '\0') {
 			break;
-	} while (--n != 0);
+		}
+	} while (--n != 0U);
+
 	return 0;
 }

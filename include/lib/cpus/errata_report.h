@@ -20,6 +20,9 @@ void print_errata_status(void);
 static inline void print_errata_status(void) {}
 #endif
 
+int32_t errata_needs_reporting(spinlock_t *lock, uint32_t *reported);
+void errata_print_msg(uint32_t status, const char *cpu, const char *id);
+
 #endif /* __ASSEMBLY__ */
 
 /* Errata status */

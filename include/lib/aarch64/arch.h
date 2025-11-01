@@ -322,7 +322,7 @@
 #define MODE32_sys		U(0xf)
 
 #define GET_RW(mode)		(((mode) >> MODE_RW_SHIFT) & MODE_RW_MASK)
-#define GET_EL(mode)		(((mode) >> MODE_EL_SHIFT) & MODE_EL_MASK)
+#define GET_EL(mode)		(uint32_t)(((mode) >> MODE_EL_SHIFT) & MODE_EL_MASK)
 #define GET_SP(mode)		(((mode) >> MODE_SP_SHIFT) & MODE_SP_MASK)
 #define GET_M32(mode)		(((mode) >> MODE32_SHIFT) & MODE32_MASK)
 
@@ -410,10 +410,6 @@
 
 #define EC_BITS(x)			(((x) >> ESR_EC_SHIFT) & ESR_EC_MASK)
 
-/* Reset bit inside the Reset management register for EL3 (RMR_EL3) */
-#define RMR_RESET_REQUEST_SHIFT 	U(0x1)
-#define RMR_WARM_RESET_CPU		(U(1) << RMR_RESET_REQUEST_SHIFT)
-
 /*******************************************************************************
  * Definitions of register offsets, fields and macros for CPU system
  * instructions.
@@ -439,8 +435,13 @@
 #define CNTACR_RWPT_SHIFT	U(0x5)
 
 /* PMCR_EL0 definitions */
+#define PMCR_EL0_RESET_VAL	U(0x0)
 #define PMCR_EL0_N_SHIFT	U(11)
 #define PMCR_EL0_N_MASK		U(0x1f)
 #define PMCR_EL0_N_BITS		(PMCR_EL0_N_MASK << PMCR_EL0_N_SHIFT)
+#define PMCR_EL0_LC_BIT		(U(1) << 6)
+#define PMCR_EL0_DP_BIT		(U(1) << 5)
+#define PMCR_EL0_X_BIT		(U(1) << 4)
+#define PMCR_EL0_D_BIT		(U(1) << 3)
 
 #endif /* __ARCH_H__ */

@@ -30,7 +30,7 @@ void cm_set_context_by_index(unsigned int cpu_idx,
 void *cm_get_context(uint32_t security_state);
 void cm_set_context(void *context, uint32_t security_state);
 void cm_init_my_context(const struct entry_point_info *ep);
-void cm_init_context_by_index(unsigned int cpu_idx,
+void cm_init_context_by_index(uint32_t cpu_idx,
 			      const struct entry_point_info *ep);
 void cm_prepare_el3_exit(uint32_t security_state);
 

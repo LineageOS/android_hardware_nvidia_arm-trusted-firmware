@@ -16,6 +16,7 @@
 #include <pmf.h>
 #include <runtime_instr.h>
 #include <runtime_svc.h>
+#include <std_svc.h>
 #include <string.h>
 
 #if ENABLE_RUNTIME_INSTRUMENTATION
@@ -41,10 +42,10 @@ static uint32_t next_image_type = NON_SECURE;
  * Implement the ARM Standard Service function to get arguments for a
  * particular service.
  */
-uintptr_t get_arm_std_svc_args(unsigned int svc_mask)
+uintptr_t get_arm_std_svc_args(uint32_t svc_mask)
 {
 	/* Setup the arguments for PSCI Library */
-	DEFINE_STATIC_PSCI_LIB_ARGS_V1(psci_args, bl31_warm_entrypoint);
+	DEFINE_STATIC_PSCI_LIB_ARGS_V1(psci_args, (uintptr_t)bl31_warm_entrypoint);
 
 	/* PSCI is the only ARM Standard Service implemented */
 	assert(svc_mask == PSCI_FID_MASK);
@@ -96,7 +97,7 @@ void bl31_main(void)
 	/*
 	 * If SPD had registerd an init hook, invoke it.
 	 */
-	if (bl32_init) {
+	if (bl32_init != NULL) {
 		INFO("BL31: Initializing BL32\n");
 		(*bl32_init)();
 	}
@@ -106,7 +107,7 @@ void bl31_main(void)
 	 */
 	bl31_prepare_next_image_entry();
 
-	console_flush();
+	(void)console_flush();
 
 	/*
 	 * Perform any platform specific runtime setup prior to cold boot exit
@@ -160,7 +161,7 @@ void bl31_prepare_next_image_entry(void)
 
 	/* Program EL3 registers to enable entry into the next EL */
 	next_image_info = bl31_plat_get_next_image_ep_info(image_type);
-	assert(next_image_info);
+	assert(next_image_info != NULL);
 	assert(image_type == GET_SECURITY_STATE(next_image_info->h.attr));
 
 	INFO("BL31: Preparing for EL3 exit to %s world\n",

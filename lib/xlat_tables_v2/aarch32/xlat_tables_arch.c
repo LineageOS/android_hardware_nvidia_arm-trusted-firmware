@@ -21,9 +21,9 @@ static unsigned long long xlat_arch_get_max_supported_pa(void)
 }
 #endif /* ENABLE_ASSERTIONS*/
 
-int is_mmu_enabled(void)
+bool is_mmu_enabled(void)
 {
-	return (read_sctlr() & SCTLR_M_BIT) != 0;
+	return (read_sctlr() & SCTLR_M_BIT) != 0U;
 }
 
 #if PLAT_XLAT_TABLES_DYNAMIC

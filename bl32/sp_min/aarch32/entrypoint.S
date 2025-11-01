@@ -10,8 +10,8 @@
 #include <context.h>
 #include <el3_common_macros.S>
 #include <runtime_svc.h>
-#include <smcc_helpers.h>
-#include <smcc_macros.S>
+#include <smccc_helpers.h>
+#include <smccc_macros.S>
 #include <xlat_tables_defs.h>
 
 	.globl	sp_min_vector_table
@@ -130,7 +130,7 @@ func handle_smc
 	/* On SMC entry, `sp` points to `smc_ctx_t`. Save `lr`. */
 	str	lr, [sp, #SMC_CTX_LR_MON]
 
-	smcc_save_gp_mode_regs
+	smccc_save_gp_mode_regs
 
 	/*
 	 * `sp` still points to `smc_ctx_t`. Save it to a register
@@ -146,6 +146,15 @@ func handle_smc
 	bic	r0, #SCR_NS_BIT
 	stcopr	r0, SCR
 	isb
+
+	/*
+	 * Set PMCR.DP to 1 to prohibit cycle counting whilst in Secure Mode.
+	 * Also, the PMCR.LC field has an architecturally UNKNOWN value on reset
+	 * and so set to 1 as ARM has deprecated use of PMCR.LC=0.
+	 */
+	ldcopr	r0, PMCR
+	orr	r0, r0, #(PMCR_LC_BIT | PMCR_DP_BIT)
+	stcopr	r0, PMCR
 
 	ldr	r0, [r2, #SMC_CTX_GPREG_R0]	/* smc_fid */
 	/* Check whether an SMC64 is issued */

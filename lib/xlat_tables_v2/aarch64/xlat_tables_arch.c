@@ -22,45 +22,50 @@
 # define IMAGE_EL	1
 #endif
 
-static unsigned long long tcr_ps_bits;
+static uint64_t tcr_ps_bits;
 
-static unsigned long long calc_physical_addr_size_bits(
-					unsigned long long max_addr)
+static uint64_t calc_physical_addr_size_bits(
+					uint64_t max_addr)
 {
 	/* Physical address can't exceed 48 bits */
-	assert((max_addr & ADDR_MASK_48_TO_63) == 0);
+	assert((max_addr & ADDR_MASK_48_TO_63) == 0U);
 
 	/* 48 bits address */
-	if (max_addr & ADDR_MASK_44_TO_47)
+	if ((max_addr & ADDR_MASK_44_TO_47) != 0U) {
 		return TCR_PS_BITS_256TB;
+	}
 
 	/* 44 bits address */
-	if (max_addr & ADDR_MASK_42_TO_43)
+	if ((max_addr & ADDR_MASK_42_TO_43) != 0U) {
 		return TCR_PS_BITS_16TB;
+	}
 
 	/* 42 bits address */
-	if (max_addr & ADDR_MASK_40_TO_41)
+	if ((max_addr & ADDR_MASK_40_TO_41) != 0U) {
 		return TCR_PS_BITS_4TB;
+	}
 
 	/* 40 bits address */
-	if (max_addr & ADDR_MASK_36_TO_39)
+	if ((max_addr & ADDR_MASK_36_TO_39) != 0U) {
 		return TCR_PS_BITS_1TB;
+	}
 
 	/* 36 bits address */
-	if (max_addr & ADDR_MASK_32_TO_35)
+	if ((max_addr & ADDR_MASK_32_TO_35) != 0U) {
 		return TCR_PS_BITS_64GB;
+	}
 
 	return TCR_PS_BITS_4GB;
 }
 
 #if ENABLE_ASSERTIONS
 /* Physical Address ranges supported in the AArch64 Memory Model */
-static const unsigned int pa_range_bits_arr[] = {
+static const uint32_t pa_range_bits_arr[] = {
 	PARANGE_0000, PARANGE_0001, PARANGE_0010, PARANGE_0011, PARANGE_0100,
 	PARANGE_0101
 };
 
-static unsigned long long xlat_arch_get_max_supported_pa(void)
+static uint64_t xlat_arch_get_max_supported_pa(void)
 {
 	u_register_t pa_range = read_id_aa64mmfr0_el1() &
 						ID_AA64MMFR0_EL1_PARANGE_MASK;
@@ -68,18 +73,18 @@ static unsigned long long xlat_arch_get_max_supported_pa(void)
 	/* All other values are reserved */
 	assert(pa_range < ARRAY_SIZE(pa_range_bits_arr));
 
-	return (1ull << pa_range_bits_arr[pa_range]) - 1ull;
+	return (1ULL << pa_range_bits_arr[pa_range]) - 1ULL;
 }
 #endif /* ENABLE_ASSERTIONS*/
 
-int is_mmu_enabled(void)
+bool is_mmu_enabled(void)
 {
 #if IMAGE_EL == 1
 	assert(IS_IN_EL(1));
-	return (read_sctlr_el1() & SCTLR_M_BIT) != 0;
+	return (read_sctlr_el1() & SCTLR_M_BIT) != 0U;
 #elif IMAGE_EL == 3
 	assert(IS_IN_EL(3));
-	return (read_sctlr_el3() & SCTLR_M_BIT) != 0;
+	return (read_sctlr_el3() & SCTLR_M_BIT) != 0U;
 #endif
 }
 
@@ -127,16 +132,16 @@ void xlat_arch_tlbi_va_sync(void)
 
 #endif /* PLAT_XLAT_TABLES_DYNAMIC */
 
-int xlat_arch_current_el(void)
+int32_t xlat_arch_current_el(void)
 {
-	int el = GET_EL(read_CurrentEl());
+	int32_t el = (int32_t)GET_EL(read_CurrentEl());
 
 	assert(el > 0);
 
 	return el;
 }
 
-uint64_t xlat_arch_get_xn_desc(int el)
+uint64_t xlat_arch_get_xn_desc(int32_t el)
 {
 	if (el == 3) {
 		return UPPER_ATTRS(XN);
@@ -146,9 +151,9 @@ uint64_t xlat_arch_get_xn_desc(int el)
 	}
 }
 
-void init_xlat_tables_arch(unsigned long long max_pa)
+void init_xlat_tables_arch(uint64_t max_pa)
 {
-	assert((PLAT_PHY_ADDR_SPACE_SIZE - 1) <=
+	assert((PLAT_PHY_ADDR_SPACE_SIZE - 1U) <=
 	       xlat_arch_get_max_supported_pa());
 
 	/*
@@ -175,14 +180,14 @@ void init_xlat_tables_arch(unsigned long long max_pa)
  *			exception level
  ******************************************************************************/
 #define DEFINE_ENABLE_MMU_EL(_el, _tcr_extra, _tlbi_fct)		\
-	void enable_mmu_internal_el##_el(unsigned int flags,		\
+	static void enable_mmu_internal_el##_el(uint32_t flags,		\
 					 uint64_t *base_table)		\
 	{								\
 		uint64_t mair, tcr, ttbr;				\
 		uint32_t sctlr;						\
 									\
 		assert(IS_IN_EL(_el));					\
-		assert((read_sctlr_el##_el() & SCTLR_M_BIT) == 0);	\
+		assert((read_sctlr_el##_el() & SCTLR_M_BIT) == 0U);	\
 									\
 		/* Invalidate TLBs at the current exception level */	\
 		_tlbi_fct();						\
@@ -197,16 +202,16 @@ void init_xlat_tables_arch(unsigned long long max_pa)
 									\
 		/* Set TCR bits as well. */				\
 		/* Set T0SZ to (64 - width of virtual address space) */	\
-		if (flags & XLAT_TABLE_NC) {				\
+		if ((flags & XLAT_TABLE_NC) != 0U) {			\
 			/* Inner & outer non-cacheable non-shareable. */\
 			tcr = TCR_SH_NON_SHAREABLE |			\
 				TCR_RGN_OUTER_NC | TCR_RGN_INNER_NC |	\
-				(64 - __builtin_ctzl(PLAT_VIRT_ADDR_SPACE_SIZE));\
+				(64U - __builtin_ctzl(PLAT_VIRT_ADDR_SPACE_SIZE));\
 		} else {						\
 			/* Inner & outer WBWA & shareable. */		\
 			tcr = TCR_SH_INNER_SHAREABLE |			\
 				TCR_RGN_OUTER_WBA | TCR_RGN_INNER_WBA |	\
-				(64 - __builtin_ctzl(PLAT_VIRT_ADDR_SPACE_SIZE));\
+				(64U - __builtin_ctzl(PLAT_VIRT_ADDR_SPACE_SIZE));\
 		}							\
 		tcr |= _tcr_extra;					\
 		write_tcr_el##_el(tcr);					\
@@ -222,13 +227,14 @@ void init_xlat_tables_arch(unsigned long long max_pa)
 		dsbish();						\
 		isb();							\
 									\
-		sctlr = read_sctlr_el##_el();				\
+		sctlr = (uint32_t)read_sctlr_el##_el();				\
 		sctlr |= SCTLR_WXN_BIT | SCTLR_M_BIT;			\
 									\
-		if (flags & DISABLE_DCACHE)				\
+		if ((flags & DISABLE_DCACHE) != 0U) {			\
 			sctlr &= ~SCTLR_C_BIT;				\
-		else							\
+		} else {						\
 			sctlr |= SCTLR_C_BIT;				\
+		}							\
 									\
 		write_sctlr_el##_el(sctlr);				\
 									\
@@ -247,7 +253,7 @@ DEFINE_ENABLE_MMU_EL(3,
 		tlbialle3)
 #endif
 
-void enable_mmu_arch(unsigned int flags, uint64_t *base_table)
+void enable_mmu_arch(uint32_t flags, uint64_t *base_table)
 {
 #if IMAGE_EL == 1
 	assert(IS_IN_EL(1));

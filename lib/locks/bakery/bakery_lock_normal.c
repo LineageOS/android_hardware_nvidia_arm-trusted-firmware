@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -9,6 +9,7 @@
 #include <bakery_lock.h>
 #include <cpu_data.h>
 #include <platform.h>
+#include <stdbool.h>
 #include <string.h>
 
 /*
@@ -53,22 +54,27 @@ extern void *__PERCPU_BAKERY_LOCK_SIZE__;
 #define PERCPU_BAKERY_LOCK_SIZE ((uintptr_t)&__PERCPU_BAKERY_LOCK_SIZE__)
 #endif
 
-#define get_bakery_info(cpu_ix, lock)	\
-	(bakery_info_t *)((uintptr_t)lock + cpu_ix * PERCPU_BAKERY_LOCK_SIZE)
+#define get_bakery_info(cpu_ix, lock_m)	\
+	(bakery_info_t *)((uintptr_t)(lock_m) + (cpu_ix) * PERCPU_BAKERY_LOCK_SIZE)
 
 #define write_cache_op(addr, cached)	\
 				do {	\
-					(cached ? dccvac((uintptr_t)addr) :\
-						dcivac((uintptr_t)addr));\
+					(((cached) != 0U) ? dccvac((uintptr_t)(addr)) :\
+						dcivac((uintptr_t)(addr)));\
 						dsbish();\
 				} while (0)
 
-#define read_cache_op(addr, cached)	if (cached) \
-					    dccivac((uintptr_t)addr)
+#define read_cache_op(_addr, _cached)	\
+				do {	\
+					if ((_cached) != 0U) { \
+					    dccivac((uintptr_t)_addr);\
+					    dsbish();\
+					} \
+				} while (0)
 
 /* Helper function to check if the lock is acquired */
-static inline int is_lock_acquired(const bakery_info_t *my_bakery_info,
-							int is_cached)
+static inline bool is_lock_acquired(const bakery_info_t *my_bakery_info,
+							uint32_t is_cached)
 {
 	/*
 	 * Even though lock data is updated only by the owning cpu and
@@ -79,14 +85,14 @@ static inline int is_lock_acquired(const bakery_info_t *my_bakery_info,
 	 * Hence do a `read_cache_op()` prior to read.
 	 */
 	read_cache_op(my_bakery_info, is_cached);
-	return !!(bakery_ticket_number(my_bakery_info->lock_data));
+	return ((bakery_ticket_number(my_bakery_info->lock_data) != 0U) ? true : false);
 }
 
-static unsigned int bakery_get_ticket(bakery_lock_t *lock,
-						unsigned int me, int is_cached)
+static uint32_t bakery_get_ticket(bakery_lock_t *lock,
+					uint32_t me, uint32_t is_cached)
 {
-	unsigned int my_ticket, their_ticket;
-	unsigned int they;
+	uint32_t my_ticket, their_ticket;
+	uint32_t they;
 	bakery_info_t *my_bakery_info, *their_bakery_info;
 
 	/*
@@ -94,7 +100,7 @@ static unsigned int bakery_get_ticket(bakery_lock_t *lock,
 	 * it is not NULL.
 	 */
 	my_bakery_info = get_bakery_info(me, lock);
-	assert(my_bakery_info);
+	assert(my_bakery_info != NULL);
 
 	/* Prevent recursive acquisition.*/
 	assert(!is_lock_acquired(my_bakery_info, is_cached));
@@ -112,16 +118,17 @@ static unsigned int bakery_get_ticket(bakery_lock_t *lock,
 	 * Iterate through the bakery information of each contender to allocate
 	 * the highest ticket number for this cpu.
 	 */
-	for (they = 0; they < BAKERY_LOCK_MAX_CPUS; they++) {
-		if (me == they)
+	for (they = 0U; they < (uint32_t)BAKERY_LOCK_MAX_CPUS; they++) {
+		if (me == they) {
 			continue;
+		}
 
 		/*
 		 * Get a reference to the other contender's bakery info and
 		 * ensure that a stale copy is not read.
 		 */
 		their_bakery_info = get_bakery_info(they, lock);
-		assert(their_bakery_info);
+		assert(their_bakery_info != NULL);
 
 		read_cache_op(their_bakery_info, is_cached);
 
@@ -130,8 +137,9 @@ static unsigned int bakery_get_ticket(bakery_lock_t *lock,
 		 * seen
 		 */
 		their_ticket = bakery_ticket_number(their_bakery_info->lock_data);
-		if (their_ticket > my_ticket)
+		if (their_ticket > my_ticket) {
 			my_ticket = their_ticket;
+		}
 	}
 
 	/*
@@ -148,16 +156,16 @@ static unsigned int bakery_get_ticket(bakery_lock_t *lock,
 
 void bakery_lock_get(bakery_lock_t *lock)
 {
-	unsigned int they, me, is_cached;
-	unsigned int my_ticket, my_prio, their_ticket;
+	uint32_t they, me, is_cached;
+	uint32_t my_ticket, my_prio, their_ticket;
 	bakery_info_t *their_bakery_info;
-	unsigned int their_bakery_data;
+	uint32_t their_bakery_data;
 
 	me = plat_my_core_pos();
 #ifdef AARCH32
 	is_cached = read_sctlr() & SCTLR_C_BIT;
 #else
-	is_cached = read_sctlr_el3() & SCTLR_C_BIT;
+	is_cached = (uint32_t)(read_sctlr_el3() & SCTLR_C_BIT);
 #endif
 
 	/* Get a ticket */
@@ -168,29 +176,30 @@ void bakery_lock_get(bakery_lock_t *lock)
 	 * with that of others, and proceed to acquire the lock
 	 */
 	my_prio = PRIORITY(my_ticket, me);
-	for (they = 0; they < BAKERY_LOCK_MAX_CPUS; they++) {
-		if (me == they)
+	for (they = 0U; they < (uint32_t)BAKERY_LOCK_MAX_CPUS; they++) {
+		if (me == they) {
 			continue;
+		}
 
 		/*
 		 * Get a reference to the other contender's bakery info and
 		 * ensure that a stale copy is not read.
 		 */
 		their_bakery_info = get_bakery_info(they, lock);
-		assert(their_bakery_info);
+		assert(their_bakery_info != NULL);
 
 		/* Wait for the contender to get their ticket */
 		do {
 			read_cache_op(their_bakery_info, is_cached);
 			their_bakery_data = their_bakery_info->lock_data;
-		} while (bakery_is_choosing(their_bakery_data));
+		} while (bakery_is_choosing(their_bakery_data) != 0U);
 
 		/*
 		 * If the other party is a contender, they'll have non-zero
 		 * (valid) ticket value. If they do, compare priorities
 		 */
 		their_ticket = bakery_ticket_number(their_bakery_data);
-		if (their_ticket && (PRIORITY(their_ticket, they) < my_prio)) {
+		if ((their_ticket != 0U) && (PRIORITY(their_ticket, they) < my_prio)) {
 			/*
 			 * They have higher priority (lower value). Wait for
 			 * their ticket value to change (either release the lock
@@ -211,9 +220,9 @@ void bakery_lock_release(bakery_lock_t *lock)
 {
 	bakery_info_t *my_bakery_info;
 #ifdef AARCH32
-	unsigned int is_cached = read_sctlr() & SCTLR_C_BIT;
+	uint32_t is_cached = read_sctlr() & SCTLR_C_BIT;
 #else
-	unsigned int is_cached = read_sctlr_el3() & SCTLR_C_BIT;
+	uint32_t is_cached = (uint32_t)(read_sctlr_el3() & SCTLR_C_BIT);
 #endif
 
 	my_bakery_info = get_bakery_info(plat_my_core_pos(), lock);

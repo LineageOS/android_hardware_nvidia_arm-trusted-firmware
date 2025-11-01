@@ -1,24 +1,27 @@
 /*
- * Copyright (c) 2016, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2016-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #include <arch_helpers.h>
 #include <assert.h>
-#include <bakery_lock.h>
 #include <bl_common.h>
 #include <context.h>
 #include <context_mgmt.h>
 #include <debug.h>
 #include <denver.h>
+#if ENABLE_WDT_LEGACY_FIQ_HANDLING
+#include <flowctrl.h>
+#endif
 #include <gic_v2.h>
 #include <interrupt_mgmt.h>
 #include <platform.h>
 #include <tegra_def.h>
 #include <tegra_private.h>
 
-static DEFINE_BAKERY_LOCK(tegra_fiq_lock);
+/* Legacy FIQ used by earlier Tegra platforms */
+#define LEGACY_FIQ_PPI_WDT		28U
 
 /*******************************************************************************
  * Static variables
@@ -40,37 +43,64 @@ static uint64_t tegra_fiq_interrupt_handler(uint32_t id,
 	uint32_t cpu = plat_my_core_pos();
 	uint32_t irq;
 
-	bakery_lock_get(&tegra_fiq_lock);
+	(void)id;
+	(void)flags;
+	(void)handle;
+	(void)cookie;
 
 	/*
-	 * The FIQ was generated when the execution was in the non-secure
-	 * world. Save the context registers to start with.
+	 * Read the pending interrupt ID
 	 */
-	cm_el1_sysregs_context_save(NON_SECURE);
+	irq = plat_ic_get_pending_interrupt_id();
 
 	/*
-	 * Save elr_el3 and spsr_el3 from the saved context, and overwrite
-	 * the context with the NS fiq_handler_addr and SPSR value.
+	 * Jump to NS world only if the NS world's FIQ handler has
+	 * been registered
 	 */
-	fiq_state[cpu].elr_el3 = read_ctx_reg((el3state_ctx), (uint32_t)(CTX_ELR_EL3));
-	fiq_state[cpu].spsr_el3 = read_ctx_reg((el3state_ctx), (uint32_t)(CTX_SPSR_EL3));
+	if (ns_fiq_handler_addr != 0U) {
 
+		/*
+		 * The FIQ was generated when the execution was in the non-secure
+		 * world. Save the context registers to start with.
+		 */
+		cm_el1_sysregs_context_save(NON_SECURE);
+
+		/*
+		 * Save elr_el3 and spsr_el3 from the saved context, and overwrite
+		 * the context with the NS fiq_handler_addr and SPSR value.
+		 */
+		fiq_state[cpu].elr_el3 = read_ctx_reg((el3state_ctx), (uint32_t)(CTX_ELR_EL3));
+		fiq_state[cpu].spsr_el3 = read_ctx_reg((el3state_ctx), (uint32_t)(CTX_SPSR_EL3));
+
+		/*
+		 * Set the new ELR to continue execution in the NS world using the
+		 * FIQ handler registered earlier.
+		 */
+		cm_set_elr_el3(NON_SECURE, ns_fiq_handler_addr);
+	}
+
+#if ENABLE_WDT_LEGACY_FIQ_HANDLING
 	/*
-	 * Set the new ELR to continue execution in the NS world using the
-	 * FIQ handler registered earlier.
+	 * Tegra platforms that use LEGACY_FIQ as the watchdog timer FIQ
+	 * need to issue an IPI to other CPUs, to allow them to handle
+	 * the "system hung" scenario. This interrupt is passed to the GICD
+	 * via the Flow Controller. So, once we receive this interrupt,
+	 * disable the routing so that we can mark it as "complete" in the
+	 * GIC later.
 	 */
-	assert(ns_fiq_handler_addr);
-	write_ctx_reg((el3state_ctx), (uint32_t)(CTX_ELR_EL3), (ns_fiq_handler_addr));
+	if (irq == LEGACY_FIQ_PPI_WDT) {
+		gicd_write_sgir(TEGRA_GICD_BASE, ((1 << 24) | 0xf));
+		tegra_fc_disable_fiq_to_ccplex_routing();
+	}
+#endif
 
 	/*
 	 * Mark this interrupt as complete to avoid a FIQ storm.
 	 */
-	irq = plat_ic_acknowledge_interrupt();
 	if (irq < 1022U) {
+		(void)plat_ic_acknowledge_interrupt();
 		plat_ic_end_of_interrupt(irq);
 	}
-
-	bakery_lock_release(&tegra_fiq_lock);
 
 	return 0;
 }

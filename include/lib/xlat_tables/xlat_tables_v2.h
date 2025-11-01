@@ -40,16 +40,16 @@
 /*
  * Memory mapping attributes
  */
-typedef enum  {
+typedef enum {
 	/*
 	 * Memory types supported.
 	 * These are organised so that, going down the list, the memory types
 	 * are getting weaker; conversely going up the list the memory types are
 	 * getting stronger.
 	 */
-	MT_DEVICE,
-	MT_NON_CACHEABLE,
-	MT_MEMORY,
+	MT_DEVICE	= U(0),
+	MT_NON_CACHEABLE	= U(1),
+	MT_MEMORY	= U(2),
 	/* Values up to 7 are reserved to add new memory types in the future */
 
 	MT_RO		= U(0) << MT_PERM_SHIFT,
@@ -69,17 +69,17 @@ typedef enum  {
 	MT_EXECUTE_NEVER	= U(1) << MT_EXECUTE_SHIFT,
 } mmap_attr_t;
 
-#define MT_CODE		(MT_MEMORY | MT_RO | MT_EXECUTE)
-#define MT_RO_DATA	(MT_MEMORY | MT_RO | MT_EXECUTE_NEVER)
+#define MT_CODE		(uint8_t)(MT_MEMORY | MT_RO | MT_EXECUTE)
+#define MT_RO_DATA	(uint8_t)(MT_MEMORY | MT_RO | MT_EXECUTE_NEVER)
 
 /*
  * Structure for specifying a single region of memory.
  */
 typedef struct mmap_region {
-	unsigned long long	base_pa;
+	uint64_t		base_pa;
 	uintptr_t		base_va;
 	size_t			size;
-	mmap_attr_t		attr;
+	uint32_t		attr;
 } mmap_region_t;
 
 /* Generic translation table APIs */
@@ -96,8 +96,8 @@ void init_xlat_tables(void);
  * be used before initializing the translation tables. The region cannot be
  * removed afterwards.
  */
-void mmap_add_region(unsigned long long base_pa, uintptr_t base_va,
-				size_t size, mmap_attr_t attr);
+void mmap_add_region(uint64_t base_pa, uintptr_t base_va,
+				size_t size, uint32_t attr);
 
 /*
  * Add a dynamic region with defined base PA and base VA. This type of region
@@ -110,8 +110,8 @@ void mmap_add_region(unsigned long long base_pa, uintptr_t base_va,
  *   ENOMEM: Not enough space in the mmap array or not enough free xlat tables.
  *    EPERM: It overlaps another region in an invalid way.
  */
-int mmap_add_dynamic_region(unsigned long long base_pa, uintptr_t base_va,
-				size_t size, mmap_attr_t attr);
+int32_t mmap_add_dynamic_region(uint64_t base_pa, uintptr_t base_va,
+				size_t size, uint32_t attr);
 
 /*
  * Add an array of static regions with defined base PA and base VA. This
@@ -130,7 +130,7 @@ void mmap_add(const mmap_region_t *mm);
  *   EINVAL: The specified region wasn't found.
  *    EPERM: Trying to remove a static region.
  */
-int mmap_remove_dynamic_region(uintptr_t base_va, size_t size);
+int32_t mmap_remove_dynamic_region(uintptr_t base_va, size_t size);
 
 #endif /*__ASSEMBLY__*/
 #endif /* __XLAT_TABLES_V2_H__ */

@@ -26,6 +26,11 @@
  * $FreeBSD$
  */
 
+/*
+ * Portions copyright (c) 2017, ARM Limited and Contributors.
+ * All rights reserved.
+ */
+
 #ifndef _STRINGS_H_
 #define	_STRINGS_H_
 
@@ -39,12 +44,12 @@ typedef	__size_t	size_t;
 
 __BEGIN_DECLS
 #if __BSD_VISIBLE || __POSIX_VISIBLE <= 200112
-int	 bcmp(const void *, const void *, size_t) __pure;	/* LEGACY */
-void	 bcopy(const void *, void *, size_t);			/* LEGACY */
-void	 bzero(void *, size_t);					/* LEGACY */
+int	 bcmp(const void *s1, const void *s2, size_t n) __pure;	/* LEGACY */
+void	 bcopy(const void *src, void *dest, size_t n);		/* LEGACY */
+void	 bzero(void *s, size_t n);				/* LEGACY */
 #endif
 #if __BSD_VISIBLE
-void	 explicit_bzero(void *, size_t);
+void	 explicit_bzero(void *buf, size_t len);
 #endif
 #if __XSI_VISIBLE
 int	 ffs(int) __pure2;
@@ -60,8 +65,8 @@ int	 flsll(long long) __pure2;
 char	*index(const char *, int) __pure;			/* LEGACY */
 char	*rindex(const char *, int) __pure;			/* LEGACY */
 #endif
-int	 strcasecmp(const char *, const char *) __pure;
-int	 strncasecmp(const char *, const char *, size_t) __pure;
+int	 strcasecmp(const char *s1, const char *s2) __pure;
+int	 strncasecmp(const char *s1, const char *s2, size_t n) __pure;
 
 #if __POSIX_VISIBLE >= 200809 || defined(_XLOCALE_H_)
 #include <xlocale/_strings.h>

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2017-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -25,28 +25,30 @@
 #endif
 
 /* Errata format: BL stage, CPU, errata ID, message */
-#define ERRATA_FORMAT	"%s: %s: errata workaround for %s was %s\n"
+#define ERRATA_FORMAT	"%s: %s: CPU workaround for %s was %s\n"
 
 /*
  * Returns whether errata needs to be reported. Passed arguments are private to
  * a CPU type.
  */
-int errata_needs_reporting(spinlock_t *lock, uint32_t *reported)
+int32_t errata_needs_reporting(spinlock_t *lock, uint32_t *reported)
 {
-	int report_now;
+	int32_t report_now;
 
 	/* If already reported, return false. */
-	if (*reported)
+	if (*reported != 0U) {
 		return 0;
+	}
 
 	/*
 	 * Acquire lock. Determine whether status needs reporting, and then mark
 	 * report status to true.
 	 */
 	spin_lock(lock);
-	report_now = !(*reported);
-	if (report_now)
-		*reported = 1;
+	report_now = (*reported == 0U) ? 1 : 0;
+	if (report_now != 0) {
+		*reported = 1U;
+	}
 	spin_unlock(lock);
 
 	return report_now;
@@ -60,7 +62,7 @@ int errata_needs_reporting(spinlock_t *lock, uint32_t *reported)
  * Applied: INFO
  * Not applied: VERBOSE
  */
-void errata_print_msg(unsigned int status, const char *cpu, const char *id)
+void errata_print_msg(uint32_t status, const char *cpu, const char *id)
 {
 	/* Errata status strings */
 	static const char *const errata_status_str[] = {
@@ -72,9 +74,9 @@ void errata_print_msg(unsigned int status, const char *cpu, const char *id)
 	const char *msg __unused;
 
 
-	assert(status >= 0 && status < ARRAY_SIZE(errata_status_str));
-	assert(cpu);
-	assert(id);
+	assert(status < ARRAY_SIZE(errata_status_str));
+	assert(cpu != NULL);
+	assert(id != NULL);
 
 	msg = errata_status_str[status];
 

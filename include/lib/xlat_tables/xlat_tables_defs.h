@@ -50,8 +50,8 @@
 
 #define PAGE_SIZE_SHIFT		FOUR_KB_SHIFT /* 4, 16 or 64 KB */
 #define PAGE_SIZE		(U(1) << PAGE_SIZE_SHIFT)
-#define PAGE_SIZE_MASK		(PAGE_SIZE - 1)
-#define IS_PAGE_ALIGNED(addr)	(((addr) & PAGE_SIZE_MASK) == 0)
+#define PAGE_SIZE_MASK		(PAGE_SIZE - 1U)
+#define IS_PAGE_ALIGNED(addr)	(((addr) & PAGE_SIZE_MASK) == 0U)
 
 #define XLAT_ENTRY_SIZE_SHIFT	U(3) /* Each MMU table entry is 8 bytes (1 << 3) */
 #define XLAT_ENTRY_SIZE		(U(1) << XLAT_ENTRY_SIZE_SHIFT)
@@ -70,7 +70,7 @@
 /* Values for number of entries in each MMU translation table */
 #define XLAT_TABLE_ENTRIES_SHIFT (XLAT_TABLE_SIZE_SHIFT - XLAT_ENTRY_SIZE_SHIFT)
 #define XLAT_TABLE_ENTRIES	(U(1) << XLAT_TABLE_ENTRIES_SHIFT)
-#define XLAT_TABLE_ENTRIES_MASK	(XLAT_TABLE_ENTRIES - 1)
+#define XLAT_TABLE_ENTRIES_MASK	(XLAT_TABLE_ENTRIES - 1U)
 
 /* Values to convert a memory address to an index into a translation table */
 #define L3_XLAT_ADDRESS_SHIFT	PAGE_SIZE_SHIFT
@@ -82,7 +82,7 @@
 
 #define XLAT_BLOCK_SIZE(level)	((u_register_t)1 << XLAT_ADDR_SHIFT(level))
 /* Mask to get the bits used to index inside a block of a certain level */
-#define XLAT_BLOCK_MASK(level)	(XLAT_BLOCK_SIZE(level) - 1)
+#define XLAT_BLOCK_MASK(level)	(XLAT_BLOCK_SIZE(level) - 1U)
 /* Mask to get the address bits common to a block of a certain table level*/
 #define XLAT_ADDR_MASK(level)	(~XLAT_BLOCK_MASK(level))
 

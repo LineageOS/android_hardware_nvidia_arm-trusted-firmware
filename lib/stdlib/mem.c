@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -13,8 +13,9 @@ void *memset(void *dst, int val, size_t count)
 {
 	char *ptr = dst;
 
-	while (count--)
-		*ptr++ = val;
+	while (count-- != 0U) {
+		*ptr++ = (char)val;
+	}
 
 	return dst;
 }
@@ -29,11 +30,12 @@ int memcmp(const void *s1, const void *s2, size_t len)
 	unsigned char sc;
 	unsigned char dc;
 
-	while (len--) {
+	while (len-- != 0U) {
 		sc = *s++;
 		dc = *d++;
-		if (sc - dc)
-			return (sc - dc);
+		if ((sc - dc) != 0U) {
+			return ((int)sc - (int)dc);
+		}
 	}
 
 	return 0;
@@ -47,8 +49,9 @@ void *memcpy(void *dst, const void *src, size_t len)
 	const char *s = src;
 	char *d = dst;
 
-	while (len--)
+	while (len-- != 0U) {
 		*d++ = *s++;
+	}
 
 	return dst;
 }
@@ -66,7 +69,7 @@ void *memmove(void *dst, const void *src, size_t len)
 	 * that issue is probably moot as such usage is probably undefined
 	 * behaviour and a bug anyway.
 	 */
-	if ((size_t)dst - (size_t)src >= len) {
+	if (((size_t)dst - (size_t)src) >= len) {
 		/* destination not in source data, so can safely use memcpy */
 		return memcpy(dst, src, len);
 	} else {
@@ -74,8 +77,9 @@ void *memmove(void *dst, const void *src, size_t len)
 		const char *end = dst;
 		const char *s = (const char *)src + len;
 		char *d = (char *)dst + len;
-		while (d != end)
+		while (d != end) {
 			*--d = *--s;
+		}
 	}
 	return dst;
 }
@@ -87,9 +91,10 @@ void *memchr(const void *src, int c, size_t len)
 {
 	const char *s = src;
 
-	while (len--) {
-		if (*s == c)
+	while (len-- != 0U) {
+		if ((int)*s == c) {
 			return (void *) s;
+		}
 		s++;
 	}
 

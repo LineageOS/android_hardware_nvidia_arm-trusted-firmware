@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -15,10 +15,11 @@
 int putchar(int c)
 {
 	int res;
-	if (console_putc((unsigned char)c) >= 0)
+	if (console_putc(c) >= 0) {
 		res = c;
-	else
+	} else {
 		res = EOF;
+	}
 
 	return res;
 }

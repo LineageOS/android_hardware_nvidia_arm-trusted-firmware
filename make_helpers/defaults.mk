@@ -112,6 +112,9 @@ SAVE_KEYS			:= 0
 # platform Makefile is free to override this value.
 SEPARATE_CODE_AND_RODATA	:= 0
 
+# Default to SMCCC Version 1.X
+SMCCC_MAJOR_VERSION		:= 1
+
 # SPD choice
 SPD				:= none
 

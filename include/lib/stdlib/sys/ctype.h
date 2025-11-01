@@ -35,7 +35,7 @@
  */
 
 /*
- * Portions copyright (c) 2009-2014, ARM Limited and Contributors.
+ * Portions copyright (c) 2009-2017, ARM Limited and Contributors.
  * All rights reserved.
  */
 
@@ -53,7 +53,30 @@
 			  || ((c) >= 'a' && (c) <= 'f'))
 #define isprint(c)	((c) >= ' ' && (c) <= '~')
 
-#define toupper(c)	((c) - 0x20 * (((c) >= 'a') && ((c) <= 'z')))
-#define tolower(c)	((c) + 0x20 * (((c) >= 'A') && ((c) <= 'Z')))
+static inline char toupper(char c)
+{
+	int mul;
+
+	if (((c) >= 'a') && ((c) <= 'z')) {
+		mul = 1;
+	} else {
+		mul = 0;
+	}
+
+	return c - 0x20 * mul;
+}
+
+static inline int tolower(unsigned char c)
+{
+	int mul;
+
+	if (((c) >= 'A') && ((c) <= 'Z')) {
+		mul = 1;
+	} else {
+		mul = 0;
+	}
+
+	return (int)c + 0x20 * mul;
+}
 
 #endif /* !_SYS_CTYPE_H_ */

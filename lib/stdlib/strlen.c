@@ -28,17 +28,18 @@
  */
 
 /*
- * Portions copyright (c) 2009-2014, ARM Limited and Contributors. All rights reserved.
+ * Portions copyright (c) 2009-2017, ARM Limited and Contributors. All rights reserved.
  */
 
 #include <stddef.h>
 
 size_t
-strlen(str)
-	const char *str;
+strlen(const char *str)
 {
 	register const char *s;
 
-	for (s = str; *s; ++s);
-	return(s - str);
+	for (s = str; *s != '\0'; ++s) {
+		; /* do nothing */
+	}
+	return (size_t)(s - str);
 }

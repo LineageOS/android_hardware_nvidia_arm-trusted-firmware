@@ -45,22 +45,22 @@ void bl31_plat_runtime_setup(void)
  * disabled. This is to enable SPDs using the older platform API to continue
  * to work.
  */
-unsigned int platform_core_pos_helper(unsigned long mpidr)
+uint32_t platform_core_pos_helper(uint64_t mpidr)
 {
-	int idx = plat_core_pos_by_mpidr(mpidr);
+	int32_t idx = plat_core_pos_by_mpidr(mpidr);
 	assert(idx >= 0);
-	return idx;
+	return (uint32_t)idx;
 }
 #endif
 
 
 #if !ERROR_DEPRECATED
-unsigned int plat_get_syscnt_freq2(void)
+uint32_t plat_get_syscnt_freq2(void)
 {
-	unsigned long long freq = plat_get_syscnt_freq();
+	uint64_t freq = plat_get_syscnt_freq();
 
-	assert(freq >> 32 == 0);
+	assert((freq >> 32U) == 0U);
 
-	return (unsigned int)freq;
+	return (uint32_t)freq;
 }
 #endif /* ERROR_DEPRECATED */
